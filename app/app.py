@@ -130,18 +130,6 @@ with st.expander("🌾 Agricultural Factor"):
     input_data["AgriculturalPractices"] = st.slider(
         "Agricultural Practices", 0.0, 10.0, 5.0, 0.1
     )
-    # Apply same log transformation used during training
-base_features = [
-    "MonsoonIntensity", "TopographyDrainage", "RiverManagement",
-    "Deforestation", "Urbanization", "ClimateChange", "DamsQuality",
-    "Siltation", "AgriculturalPractices", "Encroachments",
-    "IneffectiveDisasterPreparedness", "DrainageSystems",
-    "Landslides", "Watersheds", "DeterioratingInfrastructure",
-    "PopulationScore", "WetlandLoss", "InadequatePlanning"
-]
-
-for feature in base_features:
-    input_data[feature] = np.log1p(input_data[feature])
 
 # ---------------- AUTOMATIC FEATURE ENGINEERING ----------------
 input_data["RainFactor"] = (
@@ -163,6 +151,20 @@ input_data["WaterStress"] = (
 input_data["Blockage"] = (
     input_data["Siltation"] + input_data["Landslides"]
 ) / 2
+
+# Apply same log transformation used during training
+base_features = [
+    "MonsoonIntensity", "TopographyDrainage", "RiverManagement",
+    "Deforestation", "Urbanization", "ClimateChange", "DamsQuality",
+    "Siltation", "AgriculturalPractices", "Encroachments",
+    "IneffectiveDisasterPreparedness", "DrainageSystems",
+    "Landslides", "Watersheds", "DeterioratingInfrastructure",
+    "PopulationScore", "WetlandLoss", "InadequatePlanning"
+]
+
+for feature in base_features:
+    input_data[feature] = np.log1p(input_data[feature])
+
 
 # ---------------- PREDICTION ----------------
 st.divider()
