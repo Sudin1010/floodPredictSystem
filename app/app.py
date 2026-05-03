@@ -1,211 +1,203 @@
 import os
 import joblib
+import numpy as np
 import pandas as pd
 import streamlit as st
-import numpy as np
 
-# ---------------- PAGE SETUP ----------------
+
+
+# ANN Helper Functions
+
+
+def sigmoid(z):
+    z = np.clip(z, -500, 500)
+    return 1 / (1 + np.exp(-z))
+
+
+def relu(z):
+    return np.maximum(0, z)
+
+
+def forward_propagation(X_data, parameters):
+    Z1 = X_data @ parameters["W1"] + parameters["b1"]
+    A1 = relu(Z1)
+
+    Z2 = A1 @ parameters["W2"] + parameters["b2"]
+    A2 = relu(Z2)
+
+    Z3 = A2 @ parameters["W3"] + parameters["b3"]
+    A3 = sigmoid(Z3)
+
+    return A3
+
+
+
+# Preprocessing Pipeline
+
+
+def preprocess_user_input(raw_df, model_package):
+    df = raw_df.copy()
+
+    # 1. Log transformation same as 02_Transformation.ipynb
+    for col in df.columns:
+        df[col] = np.log1p(df[col])
+
+    # 2. Drop same columns as 03_Feature_Engineering.ipynb
+    drop_cols = ["CoastalVulnerability", "PoliticalFactors"]
+
+    for col in drop_cols:
+        if col in df.columns:
+            df = df.drop(col, axis=1)
+
+    # 3. Feature engineering same as notebook
+    df["RainFactor"] = (
+        df["MonsoonIntensity"] * df["ClimateChange"]
+    )
+
+    df["LandRisk"] = (
+        df["Deforestation"] +
+        df["Urbanization"] +
+        df["Encroachments"]
+    ) / 3
+
+    df["WaterStress"] = (
+        df["RiverManagement"] +
+        df["DrainageSystems"] +
+        df["DamsQuality"]
+    ) / 3
+
+    df["Blockage"] = (
+        df["Siltation"] +
+        df["Landslides"]
+    ) / 2
+
+    # 4. Arrange columns exactly like training
+    features = model_package["features"]
+    df = df[features]
+
+    return df
+
+
+def predict_ann(raw_input_df, model_package):
+    parameters = model_package["parameters"]
+    scaler = model_package["scaler"]
+    threshold = model_package["prediction_threshold"]
+
+    processed_df = preprocess_user_input(raw_input_df, model_package)
+
+    input_scaled = scaler.transform(processed_df)
+
+    probability = forward_propagation(input_scaled, parameters)[0][0]
+    probability = float(np.clip(probability, 0, 1))
+
+    prediction = 1 if probability >= threshold else 0
+
+    return prediction, probability, processed_df
+
+
+
+# Load Model
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+MODEL_PATH = os.path.join(BASE_DIR, "models", "ann_scratch_model.pkl")
+
+model_package = joblib.load(MODEL_PATH)
+
+
+# Streamlit UI
+
+
 st.set_page_config(
     page_title="Flood Prediction System",
     page_icon="🌊",
-    layout="wide"
+    layout="centered"
 )
 
-# ---------------- LOAD MODEL FILES ----------------
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-model = joblib.load(os.path.join(BASE_DIR, "models", "logistic_model.pkl"))
-scaler = joblib.load(os.path.join(BASE_DIR, "models", "scaler.pkl"))
-features = joblib.load(os.path.join(BASE_DIR, "models", "features.pkl"))
-
-# ---------------- HEADER ----------------
 st.title("🌊 Flood Prediction System")
-st.write(
-    "A machine learning-based system that predicts flood risk using environmental, "
-    "land, drainage, and infrastructure-related factors."
-)
 
-st.divider()
+st.subheader("Enter Raw Environmental and Hydrological Values")
 
-# ---------------- SIDEBAR ----------------
-st.sidebar.title("Project Information")
-st.sidebar.write("""
-**Model Used:** Logistic Regression  
-**Tech Stack:** Python, Scikit-learn, Streamlit  
-**Output:** Low / High Flood Risk
-""")
-
-st.sidebar.info(
-    "Engineered features such as RainFactor, LandRisk, WaterStress, and Blockage "
-    "are calculated automatically by the system."
-)
-
-# ---------------- INPUT SECTION ----------------
-st.subheader("Enter Flood Risk Factors")
+raw_features = [
+    "MonsoonIntensity",
+    "TopographyDrainage",
+    "RiverManagement",
+    "Deforestation",
+    "Urbanization",
+    "ClimateChange",
+    "DamsQuality",
+    "Siltation",
+    "AgriculturalPractices",
+    "Encroachments",
+    "IneffectiveDisasterPreparedness",
+    "DrainageSystems",
+    "Landslides",
+    "Watersheds",
+    "DeterioratingInfrastructure",
+    "PopulationScore",
+    "WetlandLoss",
+    "InadequatePlanning",
+]
 
 input_data = {}
 
-with st.expander("🌧️ Rainfall & Climate Factors", expanded=True):
-    col1, col2 = st.columns(2)
-
-    with col1:
-        input_data["MonsoonIntensity"] = st.slider("Monsoon Intensity", 0.0, 10.0, 5.0, 0.1)
-
-    with col2:
-        input_data["ClimateChange"] = st.slider("Climate Change", 0.0, 10.0, 5.0, 0.1)
-
-
-with st.expander("🏞️ Land & Human Activity Factors", expanded=True):
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        input_data["Deforestation"] = st.slider("Deforestation", 0.0, 10.0, 5.0, 0.1)
-
-    with col2:
-        input_data["Urbanization"] = st.slider("Urbanization", 0.0, 10.0, 5.0, 0.1)
-
-    with col3:
-        input_data["Encroachments"] = st.slider("Encroachments", 0.0, 10.0, 5.0, 0.1)
-
-
-with st.expander("🌊 River, Drainage & Water System Factors"):
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        input_data["RiverManagement"] = st.slider("River Management", 0.0, 10.0, 5.0, 0.1)
-
-    with col2:
-        input_data["DrainageSystems"] = st.slider("Drainage Systems", 0.0, 10.0, 5.0, 0.1)
-
-    with col3:
-        input_data["DamsQuality"] = st.slider("Dams Quality", 0.0, 10.0, 5.0, 0.1)
-
-
-with st.expander("⛰️ Soil, Terrain & Blockage Factors"):
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        input_data["Siltation"] = st.slider("Siltation", 0.0, 10.0, 5.0, 0.1)
-
-    with col2:
-        input_data["Landslides"] = st.slider("Landslides", 0.0, 10.0, 5.0, 0.1)
-
-    with col3:
-        input_data["TopographyDrainage"] = st.slider("Topography Drainage", 0.0, 10.0, 5.0, 0.1)
-
-
-with st.expander("🏗️ Preparedness & Infrastructure Factors"):
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        input_data["IneffectiveDisasterPreparedness"] = st.slider(
-            "Ineffective Disaster Preparedness", 0.0, 10.0, 5.0, 0.1
-        )
-
-    with col2:
-        input_data["DeterioratingInfrastructure"] = st.slider(
-            "Deteriorating Infrastructure", 0.0, 10.0, 5.0, 0.1
-        )
-
-    with col3:
-        input_data["InadequatePlanning"] = st.slider(
-            "Inadequate Planning", 0.0, 10.0, 5.0, 0.1
-        )
-
-
-with st.expander("👥 Population & Environmental Factors"):
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        input_data["PopulationScore"] = st.slider("Population Score", 0.0, 10.0, 5.0, 0.1)
-
-    with col2:
-        input_data["WetlandLoss"] = st.slider("Wetland Loss", 0.0, 10.0, 5.0, 0.1)
-
-    with col3:
-        input_data["Watersheds"] = st.slider("Watersheds", 0.0, 10.0, 5.0, 0.1)
-
-
-with st.expander("🌾 Agricultural Factor"):
-    input_data["AgriculturalPractices"] = st.slider(
-        "Agricultural Practices", 0.0, 10.0, 5.0, 0.1
+for feature in raw_features:
+    input_data[feature] = st.number_input(
+        label=feature,
+        min_value=0.0,
+        max_value=20.0,
+        value=4.9,
+        step=0.1
     )
 
-# ---------------- AUTOMATIC FEATURE ENGINEERING ----------------
-input_data["RainFactor"] = (
-    input_data["MonsoonIntensity"] * input_data["ClimateChange"]
-) / 10
+raw_input_df = pd.DataFrame([input_data])
 
-input_data["LandRisk"] = (
-    input_data["Deforestation"]
-    + input_data["Urbanization"]
-    + input_data["Encroachments"]
-) / 3
-
-input_data["WaterStress"] = (
-    input_data["RiverManagement"]
-    + input_data["DrainageSystems"]
-    + input_data["DamsQuality"]
-) / 3
-
-input_data["Blockage"] = (
-    input_data["Siltation"] + input_data["Landslides"]
-) / 2
-
-# Apply same log transformation used during training
-base_features = [
-    "MonsoonIntensity", "TopographyDrainage", "RiverManagement",
-    "Deforestation", "Urbanization", "ClimateChange", "DamsQuality",
-    "Siltation", "AgriculturalPractices", "Encroachments",
-    "IneffectiveDisasterPreparedness", "DrainageSystems",
-    "Landslides", "Watersheds", "DeterioratingInfrastructure",
-    "PopulationScore", "WetlandLoss", "InadequatePlanning"
-]
-
-for feature in base_features:
-    input_data[feature] = np.log1p(input_data[feature])
+st.write("### Raw Input Preview")
+st.dataframe(raw_input_df)
 
 
-# ---------------- PREDICTION ----------------
-st.divider()
 
-if st.button("Predict Flood Risk", type="primary"):
+# Prediction
 
-    input_df = pd.DataFrame([input_data])
 
-    # Keep same feature order used during training
-    input_df = input_df[features]
+if st.button("Predict Flood Risk"):
+    prediction, probability, processed_df = predict_ann(raw_input_df, model_package)
 
-    # Scale input
-    input_scaled = scaler.transform(input_df)
+    risk_percentage = probability * 100
 
-    prediction = model.predict(input_scaled)[0]
-    probability = model.predict_proba(input_scaled)[0][1]
+    st.write("### Prediction Result")
+    st.write(f"Flood Probability: **{risk_percentage:.2f}%**")
 
-    st.subheader("Prediction Result")
+    st.write("### Risk Level")
+
+    if probability < 0.40:
+        st.success("✅ Low Flood Risk")
+    elif probability < 0.60:
+        st.warning("⚠️ Medium Flood Risk")
+    else:
+        st.error("🚨 High Flood Risk")
+
+    st.write("### Final Decision")
 
     if prediction == 1:
-        st.error("⚠️ High Flood Risk")
+        st.error("🚨 Flood Risk Detected")
     else:
-        st.success("✅ Low Flood Risk")
+        st.success("✅ Flood Risk Not Detected")
 
-    st.metric("Flood Risk Probability", f"{probability * 100:.2f}%")
+    with st.expander("Processed Input Used by Model"):
+        st.dataframe(processed_df)
 
-    if probability < 0.4:
-        st.info("Risk Level: Low")
-    elif probability < 0.7:
-        st.warning("Risk Level: Medium")
-    else:
-        st.error("Risk Level: High")
 
-    with st.expander("View Input Summary"):
-        st.dataframe(input_df)
 
-    with st.expander("View Automatically Generated Features"):
-        engineered_df = pd.DataFrame([{
-            "RainFactor": input_data["RainFactor"],
-            "LandRisk": input_data["LandRisk"],
-            "WaterStress": input_data["WaterStress"],
-            "Blockage": input_data["Blockage"]
-        }])
-        st.dataframe(engineered_df)
+# Model Information
+
+
+with st.expander("Model Information"):
+    st.write("Model:", model_package["model_name"])
+    st.write("Hidden Layers:", model_package["hidden_layers"])
+    st.write("Activation Hidden:", model_package["activation_hidden"])
+    st.write("Activation Output:", model_package["activation_output"])
+    st.write("Optimizer:", model_package["optimizer"])
+    st.write("Prediction Threshold:", model_package["prediction_threshold"])
+    st.write("Feature Count:", model_package["feature_count"])
