@@ -2,6 +2,10 @@ fastapi
 uvicorn
 jinja2
 python-multipart
+joblib
+SQLAlchemy
+psycopg[binary]
+python-dotenv
 numpy
 pandas
 scikit-learn

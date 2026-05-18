@@ -1,30 +1,32 @@
-import os
+from pathlib import Path
 from typing import Dict
 
 import joblib
 import numpy as np
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+
+from app.database import Base, engine, get_db
+from app.models import PredictionHistory
 
 app = FastAPI(title="Flood Prediction System")
 
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+
 # Static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Templates
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 # Load trained ANN model
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "models",
-    "ann_scratch_model.pkl"
-)
+MODEL_PATH = PROJECT_ROOT / "models" / "ann_scratch_model.pkl"
 
-model_data = joblib.load(os.path.abspath(MODEL_PATH))
+model_data = joblib.load(MODEL_PATH)
 
 FEATURES = model_data["features"]
 FEATURE_MEANS = model_data["feature_means"]
@@ -55,6 +57,11 @@ BASE_FEATURES = [
 ]
 
 
+@app.on_event("startup")
+def create_database_tables() -> None:
+    Base.metadata.create_all(bind=engine)
+
+
 def sigmoid(z: np.ndarray) -> np.ndarray:
     z = np.clip(z, -500, 500)
     return 1 / (1 + np.exp(-z))
@@ -75,6 +82,41 @@ def forward_propagation(X_data: np.ndarray) -> np.ndarray:
     A3 = sigmoid(Z3)
 
     return A3
+
+
+def get_submitted_values(form) -> Dict[str, str]:
+    """
+    Keep raw browser form values available for redisplay after submit.
+    """
+    return {field: form.get(field, "") for field in BASE_FEATURES}
+
+
+def validate_raw_inputs(form) -> Dict[str, float]:
+    """
+    Validate browser form values before log1p transformation.
+    """
+    values = {}
+
+    for field in BASE_FEATURES:
+        raw_value = form.get(field)
+
+        if raw_value is None or raw_value == "":
+            raise ValueError(f"{field} is required.")
+
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field} must be a numeric value.") from exc
+
+        if not np.isfinite(value):
+            raise ValueError(f"{field} must be a finite number.")
+
+        if value < 0:
+            raise ValueError(f"{field} must be greater than or equal to 0.")
+
+        values[field] = value
+
+    return values
 
 
 def apply_log_transformation(values: Dict[str, float]) -> Dict[str, float]:
@@ -121,21 +163,11 @@ def validate_features(values: Dict[str, float]) -> None:
     missing = set(FEATURES) - set(values.keys())
     extra = set(values.keys()) - set(FEATURES)
 
-    print("\n===== DEBUG CHECK =====")
-    print("\nFORM + ENGINEERED FEATURES:")
-    print(list(values.keys()))
-
-    print("\nMODEL EXPECTED FEATURES:")
-    print(FEATURES)
-
-    print("\nMISSING FEATURES:")
-    print(missing)
-
-    print("\nEXTRA FEATURES:")
-    print(extra)
-
     if missing:
         raise ValueError(f"Missing model features: {missing}")
+
+    if extra:
+        raise ValueError(f"Unexpected model features: {extra}")
 
 
 def build_feature_vector(values: Dict[str, float]) -> np.ndarray:
@@ -155,6 +187,25 @@ def scale_features(feature_vector: np.ndarray) -> np.ndarray:
     stds[stds == 0] = 1.0
 
     return (feature_vector - means) / stds
+
+
+def save_prediction_history(
+    db: Session,
+    raw_values: Dict[str, float],
+    probability: float,
+    risk_level: str,
+) -> None:
+    history = PredictionHistory(
+        **raw_values,
+        probability=probability,
+        risk_level=risk_level,
+    )
+    db.add(history)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -177,47 +228,51 @@ async def predict_form(request: Request):
         context={
             "title": "Flood Risk Prediction",
             "url_for": request.url_for,
+            "values": {},
         },
     )
 
 
 @app.post("/predict", response_class=HTMLResponse)
-async def predict_result(request: Request):
+async def predict_result(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
-    values = {}
+    form_values = get_submitted_values(form)
 
     try:
         # 1. Collect 18 raw input features from browser form
-        for field in BASE_FEATURES:
-            raw_value = form.get(field)
-
-            if raw_value is None or raw_value == "":
-                raise ValueError(f"{field} is required.")
-
-            values[field] = float(raw_value)
+        raw_values = validate_raw_inputs(form)
 
         # 2. Apply same log transformation used during training
-        values = apply_log_transformation(values)
+        prediction_values = apply_log_transformation(raw_values.copy())
 
         # 3. Create 4 engineered features
-        values = compute_derived_features(values)
+        prediction_values = compute_derived_features(prediction_values)
 
         # 4. Check final feature alignment
-        validate_features(values)
+        validate_features(prediction_values)
 
         # 5. Build 22-feature vector in correct order
-        feature_vector = build_feature_vector(values)
+        feature_vector = build_feature_vector(prediction_values)
 
         # 6. Scale features using saved training means/stds
         scaled_vector = scale_features(feature_vector)
 
         # 7. ANN prediction
         probability = float(forward_propagation(scaled_vector).ravel()[0])
+        probability_percent = round(probability * 100, 2)
 
-        prediction_label = (
-            "High Flood Risk"
-            if probability >= PREDICTION_THRESHOLD
-            else "Low Flood Risk"
+        if probability_percent < 40:
+            risk_level = "Low Risk"
+        elif probability_percent < 70:
+            risk_level = "Medium Risk"
+        else:
+            risk_level = "High Risk"
+
+        save_prediction_history(
+            db=db,
+            raw_values=raw_values,
+            probability=probability_percent,
+            risk_level=risk_level,
         )
 
         return templates.TemplateResponse(
@@ -226,9 +281,10 @@ async def predict_result(request: Request):
             context={
                 "title": "Flood Risk Prediction",
                 "url_for": request.url_for,
-                "prediction": prediction_label,
-                "probability": round(probability * 100, 2),
-                "values": values,
+                "prediction": risk_level,
+                "probability": probability_percent,
+                "risk_level": risk_level,
+                "values": form_values,
                 "error": None,
             },
         )
@@ -241,6 +297,6 @@ async def predict_result(request: Request):
                 "title": "Flood Risk Prediction",
                 "url_for": request.url_for,
                 "error": str(exc),
-                "values": values,
+                "values": form_values,
             },
         )
