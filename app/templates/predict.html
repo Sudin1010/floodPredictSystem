@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow border-0 rounded-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title mb-0">Flood Risk Prediction Form</h3>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-muted mb-4">
+                        Enter the environmental and hydrological factors below to predict flood risk probability.
+                        All fields are required and should be numeric values.
+                    </p>
+
+{% if prediction %}
+<div class="prediction-result-card">
+    <div class="result-header">
+        <span class="result-icon">🌊</span>
+        <div>
+            <h3>{{ prediction }}</h3>
+            <p>Flood risk prediction completed successfully</p>
+        </div>
+    </div>
+
+    <div class="probability-section">
+        <div class="probability-number">{{ probability }}%</div>
+        <div class="probability-label">Predicted Flood Probability</div>
+    </div>
+
+    <div class="risk-progress">
+        <div class="risk-progress-fill" style="width: {{ probability }}%;"></div>
+    </div>
+
+    <div class="result-note">
+        <strong>Note:</strong> This result is generated using the trained ANN model based on the entered environmental and hydrological factors.
+    </div>
+</div>
+{% endif %}
+
+                    {% if error is defined and error %}
+                    <div class="alert alert-danger mb-4 shadow-sm" role="alert">
+                        <strong>Error:</strong> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form id="predictionForm" method="POST" action="/predict">
+                        <div class="row">
+                            <!-- Monsoon Intensity -->
+                            <div class="col-md-6 mb-3">
+                                <label for="MonsoonIntensity" class="form-label">Monsoon Intensity</label>
+                                <input type="number" class="form-control" id="MonsoonIntensity" name="MonsoonIntensity"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = more intense monsoon)</div>
+                            </div>
+
+                            <!-- Topography Drainage -->
+                            <div class="col-md-6 mb-3">
+                                <label for="TopographyDrainage" class="form-label">Topography Drainage</label>
+                                <input type="number" class="form-control" id="TopographyDrainage" name="TopographyDrainage"
+                                       min="0" max="17" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-17 (higher = better drainage)</div>
+                            </div>
+
+                            <!-- River Management -->
+                            <div class="col-md-6 mb-3">
+                                <label for="RiverManagement" class="form-label">River Management</label>
+                                <input type="number" class="form-control" id="RiverManagement" name="RiverManagement"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = better management)</div>
+                            </div>
+
+                            <!-- Deforestation -->
+                            <div class="col-md-6 mb-3">
+                                <label for="Deforestation" class="form-label">Deforestation Level</label>
+                                <input type="number" class="form-control" id="Deforestation" name="Deforestation"
+                                       min="0" max="15" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-15 (higher = more deforestation)</div>
+                            </div>
+
+                            <!-- Urbanization -->
+                            <div class="col-md-6 mb-3">
+                                <label for="Urbanization" class="form-label">Urbanization Level</label>
+                                <input type="number" class="form-control" id="Urbanization" name="Urbanization"
+                                       min="0" max="17" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-17 (higher = more urbanization)</div>
+                            </div>
+
+                            <!-- Climate Change -->
+                            <div class="col-md-6 mb-3">
+                                <label for="ClimateChange" class="form-label">Climate Change Impact</label>
+                                <input type="number" class="form-control" id="ClimateChange" name="ClimateChange"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = greater impact)</div>
+                            </div>
+
+                            <!-- Dams Quality -->
+                            <div class="col-md-6 mb-3">
+                                <label for="DamsQuality" class="form-label">Dams Quality</label>
+                                <input type="number" class="form-control" id="DamsQuality" name="DamsQuality"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = better quality)</div>
+                            </div>
+
+                            <!-- Siltation -->
+                            <div class="col-md-6 mb-3">
+                                <label for="Siltation" class="form-label">Siltation Level</label>
+                                <input type="number" class="form-control" id="Siltation" name="Siltation"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = more siltation)</div>
+                            </div>
+
+                            <!-- Agricultural Practices -->
+                            <div class="col-md-6 mb-3">
+                                <label for="AgriculturalPractices" class="form-label">Agricultural Practices</label>
+                                <input type="number" class="form-control" id="AgriculturalPractices" name="AgriculturalPractices"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = better practices)</div>
+                            </div>
+
+                            <!-- Encroachments -->
+                            <div class="col-md-6 mb-3">
+                                <label for="Encroachments" class="form-label">Encroachments</label>
+                                <input type="number" class="form-control" id="Encroachments" name="Encroachments"
+                                       min="0" max="17" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-17 (higher = more encroachments)</div>
+                            </div>
+
+                            <!-- Ineffective Disaster Preparedness -->
+                            <div class="col-md-6 mb-3">
+                                <label for="IneffectiveDisasterPreparedness" class="form-label">Disaster Preparedness</label>
+                                <input type="number" class="form-control" id="IneffectiveDisasterPreparedness" name="IneffectiveDisasterPreparedness"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = less effective)</div>
+                            </div>
+
+                            <!-- Drainage Systems -->
+                            <div class="col-md-6 mb-3">
+                                <label for="DrainageSystems" class="form-label">Drainage Systems</label>
+                                <input type="number" class="form-control" id="DrainageSystems" name="DrainageSystems"
+                                       min="0" max="17" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-17 (higher = better systems)</div>
+                            </div>
+
+                            <!-- Landslides -->
+                            <div class="col-md-6 mb-3">
+                                <label for="Landslides" class="form-label">Landslides Risk</label>
+                                <input type="number" class="form-control" id="Landslides" name="Landslides"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = greater risk)</div>
+                            </div>
+
+                            <!-- Watersheds -->
+                            <div class="col-md-6 mb-3">
+                                <label for="Watersheds" class="form-label">Watersheds Condition</label>
+                                <input type="number" class="form-control" id="Watersheds" name="Watersheds"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = better condition)</div>
+                            </div>
+
+                            <!-- Deteriorating Infrastructure -->
+                            <div class="col-md-6 mb-3">
+                                <label for="DeterioratingInfrastructure" class="form-label">Infrastructure Condition</label>
+                                <input type="number" class="form-control" id="DeterioratingInfrastructure" name="DeterioratingInfrastructure"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = more deteriorated)</div>
+                            </div>
+
+                            <!-- Population Score -->
+                            <div class="col-md-6 mb-3">
+                                <label for="PopulationScore" class="form-label">Population Score</label>
+                                <input type="number" class="form-control" id="PopulationScore" name="PopulationScore"
+                                       min="0" max="18" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-18 (higher = greater population pressure)</div>
+                            </div>
+
+                            <!-- Wetland Loss -->
+                            <div class="col-md-6 mb-3">
+                                <label for="WetlandLoss" class="form-label">Wetland Loss</label>
+                                <input type="number" class="form-control" id="WetlandLoss" name="WetlandLoss"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = greater loss)</div>
+                            </div>
+
+                            <!-- Inadequate Planning -->
+                            <div class="col-md-6 mb-3">
+                                <label for="InadequatePlanning" class="form-label">Planning Adequacy</label>
+                                <input type="number" class="form-control" id="InadequatePlanning" name="InadequatePlanning"
+                                       min="0" max="16" step="0.1" value="5.0" required>
+                                <div class="form-text">Scale: 0-16 (higher = more inadequate)</div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="/" class="btn btn-outline-secondary me-md-2">Back to Home</a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-calculator me-2"></i>Predict Flood Risk
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+// Form validation and enhancement
+document.getElementById('predictionForm').addEventListener('submit', function(e) {
+    const inputs = this.querySelectorAll('input[type="number"]');
+    let isValid = true;
+
+    inputs.forEach(input => {
+        if (!input.value || input.value < 0) {
+            input.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            input.classList.remove('is-invalid');
+        }
+    });
+
+    if (!isValid) {
+        e.preventDefault();
+        alert('Please fill in all fields with valid positive numbers.');
+    }
+});
+
+// Remove validation styling on input
+document.querySelectorAll('input[type="number"]').forEach(input => {
+    input.addEventListener('input', function() {
+        if (this.value >= 0) {
+            this.classList.remove('is-invalid');
+        }
+    });
+});
+</script>
+{% endblock %}

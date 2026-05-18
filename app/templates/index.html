@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="container py-5">
+    <div class="row align-items-center">
+        <div class="col-lg-6">
+            <h1 class="display-5 fw-bold">Flood Prediction System</h1>
+            <p class="lead mt-3">
+                A machine learning web application that predicts flood risk using
+                environmental and hydrological factors.
+            </p>
+            <a href="/predict" class="btn btn-primary btn-lg mt-3">Start Prediction</a>
+        </div>
+
+        <div class="col-lg-6 mt-4 mt-lg-0">
+            <div class="card shadow border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h4>Project Overview</h4>
+                    <p>
+                        This system uses a custom Artificial Neural Network model trained
+                        from scratch and saved as <strong>ann_scratch_model.pkl</strong>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
