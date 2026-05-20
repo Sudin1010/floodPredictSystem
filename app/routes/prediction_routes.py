@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.database import get_db
+from app.database.connection import get_db
 from app.ml.predictor import map_risk_level, predict_probability
 from app.ml.preprocessing import (
     BASE_FEATURES,
@@ -18,7 +18,7 @@ from app.ml.preprocessing import (
     validate_features,
     validate_raw_inputs,
 )
-from app.models import PredictionHistory
+from app.database.models import PredictionHistory
 
 router = APIRouter()
 

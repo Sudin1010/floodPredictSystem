@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.models import User
+from app.database.models import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

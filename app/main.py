@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import inspect, text
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.database import Base, engine
+from app.database.connection import Base, engine
 from app.routes import auth_routes, dashboard_routes, prediction_routes
 
 app = FastAPI(title="Flood Prediction System")
