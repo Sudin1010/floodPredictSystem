@@ -2,8 +2,6 @@ import os
 from pathlib import Path
 from typing import Dict
 
-import joblib
-import numpy as np
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,12 +12,21 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import authenticate_user, get_current_user, get_user_by_username_or_email, hash_password
 from app.database import Base, engine, get_db
+from app.ml.predictor import map_risk_level, predict_probability
+from app.ml.preprocessing import (
+    BASE_FEATURES,
+    apply_log_transformation,
+    build_feature_vector,
+    compute_derived_features,
+    scale_features,
+    validate_features,
+    validate_raw_inputs,
+)
 from app.models import PredictionHistory, User
 
 app = FastAPI(title="Flood Prediction System")
 
 BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "change-this-development-secret")
 
 app.add_middleware(
@@ -47,39 +54,6 @@ def format_datetime(value) -> str:
 
 
 templates.env.filters["format_datetime"] = format_datetime
-
-# Load trained ANN model
-MODEL_PATH = PROJECT_ROOT / "models" / "ann_scratch_model.pkl"
-
-model_data = joblib.load(MODEL_PATH)
-
-FEATURES = model_data["features"]
-FEATURE_MEANS = model_data["feature_means"]
-FEATURE_STDS = model_data["feature_stds"]
-PARAMETERS = model_data["parameters"]
-PREDICTION_THRESHOLD = model_data.get("prediction_threshold", 0.5)
-
-# Raw features shown in browser form
-BASE_FEATURES = [
-    "MonsoonIntensity",
-    "TopographyDrainage",
-    "RiverManagement",
-    "Deforestation",
-    "Urbanization",
-    "ClimateChange",
-    "DamsQuality",
-    "Siltation",
-    "AgriculturalPractices",
-    "Encroachments",
-    "IneffectiveDisasterPreparedness",
-    "DrainageSystems",
-    "Landslides",
-    "Watersheds",
-    "DeterioratingInfrastructure",
-    "PopulationScore",
-    "WetlandLoss",
-    "InadequatePlanning",
-]
 
 
 @app.on_event("startup")
@@ -110,131 +84,11 @@ def ensure_prediction_history_user_id() -> None:
             )
 
 
-def sigmoid(z: np.ndarray) -> np.ndarray:
-    z = np.clip(z, -500, 500)
-    return 1 / (1 + np.exp(-z))
-
-
-def relu(z: np.ndarray) -> np.ndarray:
-    return np.maximum(0, z)
-
-
-def forward_propagation(X_data: np.ndarray) -> np.ndarray:
-    Z1 = X_data @ PARAMETERS["W1"] + PARAMETERS["b1"]
-    A1 = relu(Z1)
-
-    Z2 = A1 @ PARAMETERS["W2"] + PARAMETERS["b2"]
-    A2 = relu(Z2)
-
-    Z3 = A2 @ PARAMETERS["W3"] + PARAMETERS["b3"]
-    A3 = sigmoid(Z3)
-
-    return A3
-
-
 def get_submitted_values(form) -> Dict[str, str]:
     """
     Keep raw browser form values available for redisplay after submit.
     """
     return {field: form.get(field, "") for field in BASE_FEATURES}
-
-
-def validate_raw_inputs(form) -> Dict[str, float]:
-    """
-    Validate browser form values before log1p transformation.
-    """
-    values = {}
-
-    for field in BASE_FEATURES:
-        raw_value = form.get(field)
-
-        if raw_value is None or raw_value == "":
-            raise ValueError(f"{field} is required.")
-
-        try:
-            value = float(raw_value)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"{field} must be a numeric value.") from exc
-
-        if not np.isfinite(value):
-            raise ValueError(f"{field} must be a finite number.")
-
-        if value < 0:
-            raise ValueError(f"{field} must be greater than or equal to 0.")
-
-        values[field] = value
-
-    return values
-
-
-def apply_log_transformation(values: Dict[str, float]) -> Dict[str, float]:
-    """
-    Apply log1p transformation to raw input features.
-    This must match the training pipeline.
-    """
-    for field in BASE_FEATURES:
-        values[field] = float(np.log1p(values[field]))
-    return values
-
-
-def compute_derived_features(values: Dict[str, float]) -> Dict[str, float]:
-    """
-    Create engineered features used during model training.
-    These 4 features convert 18 raw inputs into 22 final ANN inputs.
-    """
-    values["RainFactor"] = values["MonsoonIntensity"] * values["ClimateChange"]
-
-    values["LandRisk"] = (
-        values["Deforestation"]
-        + values["Urbanization"]
-        + values["Encroachments"]
-    ) / 3
-
-    values["WaterStress"] = (
-        values["RiverManagement"]
-        + values["DrainageSystems"]
-        + values["DamsQuality"]
-    ) / 3
-
-    values["Blockage"] = (
-        values["Siltation"]
-        + values["Landslides"]
-    ) / 2
-
-    return values
-
-
-def validate_features(values: Dict[str, float]) -> None:
-    """
-    Check whether backend features match trained model features.
-    """
-    missing = set(FEATURES) - set(values.keys())
-    extra = set(values.keys()) - set(FEATURES)
-
-    if missing:
-        raise ValueError(f"Missing model features: {missing}")
-
-    if extra:
-        raise ValueError(f"Unexpected model features: {extra}")
-
-
-def build_feature_vector(values: Dict[str, float]) -> np.ndarray:
-    """
-    Build final feature vector in the exact same order used during training.
-    """
-    return np.array([[values[name] for name in FEATURES]], dtype=float)
-
-
-def scale_features(feature_vector: np.ndarray) -> np.ndarray:
-    """
-    Standard scaling using feature means and stds saved from training.
-    """
-    means = np.array([FEATURE_MEANS[name] for name in FEATURES], dtype=float)
-    stds = np.array([FEATURE_STDS[name] for name in FEATURES], dtype=float)
-
-    stds[stds == 0] = 1.0
-
-    return (feature_vector - means) / stds
 
 
 def save_prediction_history(
@@ -467,24 +321,12 @@ async def predict_result(request: Request, db: Session = Depends(get_db)):
         scaled_vector = scale_features(feature_vector)
 
         # 7. ANN prediction
-        probability = float(forward_propagation(scaled_vector).ravel()[0])
+        probability = predict_probability(scaled_vector)
         probability_percent = round(probability * 100, 2)
 
-        if probability_percent < 40:
-            risk_level = "Low Risk"
-            risk_class = "low"
-            risk_explanation = "Current conditions indicate a low possibility of flood risk."
-            recommendation = "Continue regular monitoring."
-        elif probability_percent < 70:
-            risk_level = "Medium Risk"
-            risk_class = "medium"
-            risk_explanation = "Moderate flood risk detected."
-            recommendation = "Increased monitoring and preparedness are recommended."
-        else:
-            risk_level = "High Risk"
-            risk_class = "high"
-            risk_explanation = "High flood risk detected."
-            recommendation = "Immediate preparedness and safety measures are recommended."
+        risk_level, risk_class, risk_explanation, recommendation = map_risk_level(
+            probability_percent
+        )
 
         save_prediction_history(
             db=db,
