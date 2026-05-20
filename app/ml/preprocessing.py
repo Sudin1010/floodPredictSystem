@@ -1,5 +1,3 @@
-from typing import Dict
-
 import numpy as np
 
 from app.ml.model_loader import FEATURES, FEATURE_MEANS, FEATURE_STDS
@@ -27,11 +25,9 @@ BASE_FEATURES = [
 ]
 
 
-def validate_raw_inputs(form) -> Dict[str, float]:
-    """
-    Validate browser form values before log1p transformation.
-    """
-    values = {}
+def validate_raw_inputs(form) -> dict[str, float]:
+    """Validate the 18 browser inputs before any training-time transformations."""
+    values: dict[str, float] = {}
 
     for field in BASE_FEATURES:
         raw_value = form.get(field)
@@ -55,21 +51,15 @@ def validate_raw_inputs(form) -> Dict[str, float]:
     return values
 
 
-def apply_log_transformation(values: Dict[str, float]) -> Dict[str, float]:
-    """
-    Apply log1p transformation to raw input features.
-    This must match the training pipeline.
-    """
+def apply_log_transformation(values: dict[str, float]) -> dict[str, float]:
+    """Apply the training pipeline's log1p transformation to raw features."""
     for field in BASE_FEATURES:
         values[field] = float(np.log1p(values[field]))
     return values
 
 
-def compute_derived_features(values: Dict[str, float]) -> Dict[str, float]:
-    """
-    Create engineered features used during model training.
-    These 4 features convert 18 raw inputs into 22 final ANN inputs.
-    """
+def compute_derived_features(values: dict[str, float]) -> dict[str, float]:
+    """Create the 4 engineered features that expand 18 raw inputs to 22 ANN inputs."""
     values["RainFactor"] = values["MonsoonIntensity"] * values["ClimateChange"]
 
     values["LandRisk"] = (
@@ -92,10 +82,8 @@ def compute_derived_features(values: Dict[str, float]) -> Dict[str, float]:
     return values
 
 
-def validate_features(values: Dict[str, float]) -> None:
-    """
-    Check whether backend features match trained model features.
-    """
+def validate_features(values: dict[str, float]) -> None:
+    """Check that runtime features exactly match the saved model feature set."""
     missing = set(FEATURES) - set(values.keys())
     extra = set(values.keys()) - set(FEATURES)
 
@@ -106,17 +94,13 @@ def validate_features(values: Dict[str, float]) -> None:
         raise ValueError(f"Unexpected model features: {extra}")
 
 
-def build_feature_vector(values: Dict[str, float]) -> np.ndarray:
-    """
-    Build final feature vector in the exact same order used during training.
-    """
+def build_feature_vector(values: dict[str, float]) -> np.ndarray:
+    """Build the model input vector in the saved training feature order."""
     return np.array([[values[name] for name in FEATURES]], dtype=float)
 
 
 def scale_features(feature_vector: np.ndarray) -> np.ndarray:
-    """
-    Standard scaling using feature means and stds saved from training.
-    """
+    """Standardize features using means and standard deviations saved with the model."""
     means = np.array([FEATURE_MEANS[name] for name in FEATURES], dtype=float)
     stds = np.array([FEATURE_STDS[name] for name in FEATURES], dtype=float)
 

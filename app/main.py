@@ -3,12 +3,11 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import inspect, text
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.database.connection import Base, engine
-from app.routes import auth_routes, dashboard_routes, prediction_routes
+from app.routes import auth_router, dashboard_router, prediction_router
 
 app = FastAPI(title="Flood Prediction System")
 
@@ -25,21 +24,20 @@ app.add_middleware(
 # Static files
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
-# Templates
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
-
-app.include_router(prediction_routes.router)
-app.include_router(dashboard_routes.router)
-app.include_router(auth_routes.router)
+app.include_router(prediction_router)
+app.include_router(dashboard_router)
+app.include_router(auth_router)
 
 
 @app.on_event("startup")
 def create_database_tables() -> None:
+    """Create known ORM tables and preserve the existing history user_id migration."""
     Base.metadata.create_all(bind=engine)
     ensure_prediction_history_user_id()
 
 
 def ensure_prediction_history_user_id() -> None:
+    """Keep older prediction_history tables compatible with per-user history."""
     inspector = inspect(engine)
     if not inspector.has_table("prediction_history"):
         return

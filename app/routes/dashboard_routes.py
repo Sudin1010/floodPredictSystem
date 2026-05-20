@@ -3,12 +3,11 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.auth.session import get_current_user
+from app.auth import get_current_user
 from app.database.connection import get_db
-from app.database.models import PredictionHistory
+from app.services import get_user_prediction_summary
 
 router = APIRouter()
 
@@ -35,18 +34,10 @@ async def prediction_history(request: Request, db: Session = Depends(get_db)):
     if current_user is None:
         return RedirectResponse(url="/login", status_code=303)
 
-    history_rows = db.scalars(
-        select(PredictionHistory)
-        .where(PredictionHistory.user_id == current_user.id)
-        .order_by(PredictionHistory.created_at.desc(), PredictionHistory.id.desc())
-        .limit(20)
-    ).all()
-    total_predictions = db.scalar(
-        select(func.count())
-        .select_from(PredictionHistory)
-        .where(PredictionHistory.user_id == current_user.id)
+    history_rows, total_predictions, latest_prediction = get_user_prediction_summary(
+        db,
+        current_user.id,
     )
-    latest_prediction = history_rows[0] if history_rows else None
 
     return templates.TemplateResponse(
         request=request,

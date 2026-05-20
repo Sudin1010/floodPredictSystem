@@ -1,24 +1,24 @@
 from pathlib import Path
-from typing import Dict
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.auth.session import get_current_user
+from app.auth import get_current_user
 from app.database.connection import get_db
-from app.ml.predictor import map_risk_level, predict_probability
-from app.ml.preprocessing import (
+from app.ml import (
     BASE_FEATURES,
     apply_log_transformation,
     build_feature_vector,
     compute_derived_features,
+    map_risk_level,
+    predict_probability,
     scale_features,
     validate_features,
     validate_raw_inputs,
 )
-from app.database.models import PredictionHistory
+from app.services import save_prediction_history
 
 router = APIRouter()
 
@@ -26,32 +26,11 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
-def get_submitted_values(form) -> Dict[str, str]:
+def get_submitted_values(form) -> dict[str, str]:
     """
     Keep raw browser form values available for redisplay after submit.
     """
     return {field: form.get(field, "") for field in BASE_FEATURES}
-
-
-def save_prediction_history(
-    db: Session,
-    raw_values: Dict[str, float],
-    probability: float,
-    risk_level: str,
-    user_id: int | None = None,
-) -> None:
-    history = PredictionHistory(
-        **raw_values,
-        probability=probability,
-        risk_level=risk_level,
-        user_id=user_id,
-    )
-    db.add(history)
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
 
 
 @router.get("/", response_class=HTMLResponse)

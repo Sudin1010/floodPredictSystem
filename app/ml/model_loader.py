@@ -8,6 +8,7 @@ MODEL_PATH = PROJECT_ROOT / "models" / "ann_scratch_model.pkl"
 
 
 def validate_model_package(model_package: dict[str, Any]) -> None:
+    """Ensure the saved ANN package contains the data required for inference."""
     required_keys = {
         "features",
         "feature_means",
@@ -21,6 +22,7 @@ def validate_model_package(model_package: dict[str, Any]) -> None:
 
 
 def load_model_package(model_path: Path = MODEL_PATH) -> dict[str, Any]:
+    """Load the saved ANN package without retraining or modifying it."""
     model_package = joblib.load(model_path)
     validate_model_package(model_package)
     return model_package

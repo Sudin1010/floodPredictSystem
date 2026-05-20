@@ -7,10 +7,10 @@ from app.auth.session import (
 )
 
 __all__ = [
-    "hash_password",
-    "verify_password",
     "authenticate_user",
     "get_current_user",
     "get_user_by_id",
     "get_user_by_username_or_email",
+    "hash_password",
+    "verify_password",
 ]
