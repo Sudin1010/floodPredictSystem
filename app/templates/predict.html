@@ -14,31 +14,42 @@
                         All fields are required and should be numeric values.
                     </p>
 
-{% if prediction %}
-<div class="prediction-result-card">
-    <div class="result-header">
-        <span class="result-icon">🌊</span>
-        <div>
-            <h3>{{ risk_level }}</h3>
-            <p>Flood risk prediction completed successfully</p>
-        </div>
-    </div>
+                    {% if prediction is defined and prediction %}
+                    <div class="prediction-result-card result-{{ risk_class }}">
+                        <div class="result-header">
+                            <div>
+                                <span class="result-label">Prediction Result</span>
+                                <h3>Flood Risk Level</h3>
+                            </div>
+                            <span class="result-risk-badge result-risk-{{ risk_class }}">{{ risk_level }}</span>
+                        </div>
 
-    <div class="probability-section">
-        <div class="probability-number">{{ probability }}%</div>
-        <div class="probability-label">Flood Probability</div>
-        <div class="probability-label mt-2">Risk Level: <strong>{{ risk_level }}</strong></div>
-    </div>
+                        <div class="result-grid">
+                            <div class="probability-section">
+                                <div class="probability-number">{{ probability }}%</div>
+                                <div class="probability-label">Flood Probability</div>
+                            </div>
+                            <div class="result-summary">
+                                <p class="result-message">{{ risk_explanation }}</p>
+                                <p class="result-recommendation">{{ recommendation }}</p>
+                            </div>
+                        </div>
 
-    <div class="risk-progress">
-        <div class="risk-progress-fill" style="width: {{ probability }}%;"></div>
-    </div>
+                        <div class="risk-progress" aria-label="Flood probability progress">
+                            <div class="risk-progress-fill risk-progress-{{ risk_class }}" data-probability="{{ probability|default(0) }}"></div>
+                        </div>
+                        <div class="risk-scale">
+                            <span>Low</span>
+                            <span>Medium</span>
+                            <span>High</span>
+                        </div>
 
-    <div class="result-note">
-        <strong>Note:</strong> This result is generated using the trained ANN model based on the entered environmental and hydrological factors.
-    </div>
-</div>
-{% endif %}
+                        <div class="result-actions">
+                            <a href="/predict" class="btn btn-outline-primary">Make Another Prediction</a>
+                            <a href="/history" class="btn btn-primary">View Prediction History</a>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     {% if error is defined and error %}
                     <div class="alert alert-danger mb-4 shadow-sm" role="alert">
@@ -209,24 +220,28 @@
 
 <script>
 // Form validation and enhancement
-document.getElementById('predictionForm').addEventListener('submit', function(e) {
-    const inputs = this.querySelectorAll('input[type="number"]');
-    let isValid = true;
+const predictionForm = document.getElementById('predictionForm');
 
-    inputs.forEach(input => {
-        if (!input.value || input.value < 0) {
-            input.classList.add('is-invalid');
-            isValid = false;
-        } else {
-            input.classList.remove('is-invalid');
+if (predictionForm) {
+    predictionForm.addEventListener('submit', function(e) {
+        const inputs = this.querySelectorAll('input[type="number"]');
+        let isValid = true;
+
+        inputs.forEach(input => {
+            if (!input.value || input.value < 0) {
+                input.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        });
+
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all fields with valid positive numbers.');
         }
     });
-
-    if (!isValid) {
-        e.preventDefault();
-        alert('Please fill in all fields with valid positive numbers.');
-    }
-});
+}
 
 // Remove validation styling on input
 document.querySelectorAll('input[type="number"]').forEach(input => {
@@ -235,6 +250,12 @@ document.querySelectorAll('input[type="number"]').forEach(input => {
             this.classList.remove('is-invalid');
         }
     });
+});
+
+document.querySelectorAll('.risk-progress-fill[data-probability]').forEach(progressBar => {
+    const probability = Number(progressBar.dataset.probability);
+    const safeProbability = Number.isFinite(probability) ? Math.min(Math.max(probability, 0), 100) : 0;
+    progressBar.style.width = `${safeProbability}%`;
 });
 </script>
 {% endblock %}

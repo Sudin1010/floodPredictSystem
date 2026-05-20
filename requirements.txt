@@ -6,6 +6,9 @@ joblib
 SQLAlchemy
 psycopg[binary]
 python-dotenv
+passlib[bcrypt]
+bcrypt<4
+itsdangerous
 numpy
 pandas
 scikit-learn

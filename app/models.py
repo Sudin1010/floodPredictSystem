@@ -1,15 +1,36 @@
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import DateTime, Float, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    predictions: Mapped[list["PredictionHistory"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class PredictionHistory(Base):
     __tablename__ = "prediction_history"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     MonsoonIntensity: Mapped[float] = mapped_column(Float, nullable=False)
     TopographyDrainage: Mapped[float] = mapped_column(Float, nullable=False)
     RiverManagement: Mapped[float] = mapped_column(Float, nullable=False)
@@ -35,3 +56,5 @@ class PredictionHistory(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    user: Mapped[Optional[User]] = relationship(back_populates="predictions")

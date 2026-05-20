@@ -1,27 +1,52 @@
+import os
 from pathlib import Path
 from typing import Dict
 
 import joblib
 import numpy as np
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func, inspect, select, text
 from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
 
+from app.auth import authenticate_user, get_current_user, get_user_by_username_or_email, hash_password
 from app.database import Base, engine, get_db
-from app.models import PredictionHistory
+from app.models import PredictionHistory, User
 
 app = FastAPI(title="Flood Prediction System")
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
+SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "change-this-development-secret")
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET_KEY,
+    same_site="lax",
+    https_only=False,
+)
 
 # Static files
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Templates
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def format_datetime(value) -> str:
+    if value is None:
+        return "Not available"
+
+    day = value.strftime("%d").lstrip("0")
+    month_year = value.strftime("%b %Y")
+    time_value = value.strftime("%I:%M %p").lstrip("0")
+    return f"{day} {month_year} • {time_value}"
+
+
+templates.env.filters["format_datetime"] = format_datetime
 
 # Load trained ANN model
 MODEL_PATH = PROJECT_ROOT / "models" / "ann_scratch_model.pkl"
@@ -60,6 +85,29 @@ BASE_FEATURES = [
 @app.on_event("startup")
 def create_database_tables() -> None:
     Base.metadata.create_all(bind=engine)
+    ensure_prediction_history_user_id()
+
+
+def ensure_prediction_history_user_id() -> None:
+    inspector = inspect(engine)
+    if not inspector.has_table("prediction_history"):
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("prediction_history")}
+    if "user_id" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE prediction_history "
+                    "ADD COLUMN user_id INTEGER NULL REFERENCES users(id)"
+                )
+            )
+            connection.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS "
+                    "ix_prediction_history_user_id ON prediction_history (user_id)"
+                )
+            )
 
 
 def sigmoid(z: np.ndarray) -> np.ndarray:
@@ -194,11 +242,13 @@ def save_prediction_history(
     raw_values: Dict[str, float],
     probability: float,
     risk_level: str,
+    user_id: int | None = None,
 ) -> None:
     history = PredictionHistory(
         **raw_values,
         probability=probability,
         risk_level=risk_level,
+        user_id=user_id,
     )
     db.add(history)
     try:
@@ -209,19 +259,25 @@ def save_prediction_history(
 
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
+async def home(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context={
             "title": "Flood Prediction System",
             "url_for": request.url_for,
+            "current_user": current_user,
         },
     )
 
 
 @app.get("/predict", response_class=HTMLResponse)
-async def predict_form(request: Request):
+async def predict_form(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
     return templates.TemplateResponse(
         request=request,
         name="predict.html",
@@ -229,12 +285,165 @@ async def predict_form(request: Request):
             "title": "Flood Risk Prediction",
             "url_for": request.url_for,
             "values": {},
+            "current_user": current_user,
         },
     )
 
 
+@app.get("/history", response_class=HTMLResponse)
+async def prediction_history(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    history_rows = db.scalars(
+        select(PredictionHistory)
+        .where(PredictionHistory.user_id == current_user.id)
+        .order_by(PredictionHistory.created_at.desc(), PredictionHistory.id.desc())
+        .limit(20)
+    ).all()
+    total_predictions = db.scalar(
+        select(func.count())
+        .select_from(PredictionHistory)
+        .where(PredictionHistory.user_id == current_user.id)
+    )
+    latest_prediction = history_rows[0] if history_rows else None
+
+    return templates.TemplateResponse(
+        request=request,
+        name="history.html",
+        context={
+            "title": "Prediction History",
+            "url_for": request.url_for,
+            "history_rows": history_rows,
+            "total_predictions": total_predictions or 0,
+            "latest_prediction": latest_prediction,
+            "current_user": current_user,
+        },
+    )
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_form(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if current_user is not None:
+        return RedirectResponse(url="/predict", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="register.html",
+        context={
+            "title": "Register",
+            "url_for": request.url_for,
+            "current_user": current_user,
+            "error": None,
+        },
+    )
+
+
+@app.post("/register", response_class=HTMLResponse)
+async def register_user(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    username = form.get("username", "").strip()
+    email = form.get("email", "").strip().lower()
+    password = form.get("password", "")
+    confirm_password = form.get("confirm_password", "")
+
+    error = None
+    if not username or not email or not password or not confirm_password:
+        error = "All fields are required."
+    elif len(password) < 8:
+        error = "Password must be at least 8 characters."
+    elif password != confirm_password:
+        error = "Passwords do not match."
+    elif get_user_by_username_or_email(db, username) is not None:
+        error = "Username is already registered."
+    elif get_user_by_username_or_email(db, email) is not None:
+        error = "Email is already registered."
+
+    if error:
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={
+                "title": "Register",
+                "url_for": request.url_for,
+                "current_user": None,
+                "error": error,
+                "username": username,
+                "email": email,
+            },
+        )
+
+    user = User(
+        username=username,
+        email=email,
+        password_hash=hash_password(password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return RedirectResponse(url="/login?registered=1", status_code=303)
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_form(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if current_user is not None:
+        return RedirectResponse(url="/predict", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "title": "Login",
+            "url_for": request.url_for,
+            "current_user": current_user,
+            "error": None,
+            "success": "Registration successful. Please login."
+            if request.query_params.get("registered") == "1"
+            else None,
+        },
+    )
+
+
+@app.post("/login", response_class=HTMLResponse)
+async def login_user(request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    username_or_email = form.get("username_or_email", "").strip()
+    password = form.get("password", "")
+    user = authenticate_user(db, username_or_email, password)
+
+    if user is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={
+                "title": "Login",
+                "url_for": request.url_for,
+                "current_user": None,
+                "error": "Invalid username/email or password.",
+                "username_or_email": username_or_email,
+            },
+        )
+
+    request.session["user_id"] = user.id
+    return RedirectResponse(url="/predict", status_code=303)
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)
+
+
 @app.post("/predict", response_class=HTMLResponse)
 async def predict_result(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
     form = await request.form()
     form_values = get_submitted_values(form)
 
@@ -263,16 +472,26 @@ async def predict_result(request: Request, db: Session = Depends(get_db)):
 
         if probability_percent < 40:
             risk_level = "Low Risk"
+            risk_class = "low"
+            risk_explanation = "Current conditions indicate a low possibility of flood risk."
+            recommendation = "Continue regular monitoring."
         elif probability_percent < 70:
             risk_level = "Medium Risk"
+            risk_class = "medium"
+            risk_explanation = "Moderate flood risk detected."
+            recommendation = "Increased monitoring and preparedness are recommended."
         else:
             risk_level = "High Risk"
+            risk_class = "high"
+            risk_explanation = "High flood risk detected."
+            recommendation = "Immediate preparedness and safety measures are recommended."
 
         save_prediction_history(
             db=db,
             raw_values=raw_values,
             probability=probability_percent,
             risk_level=risk_level,
+            user_id=current_user.id,
         )
 
         return templates.TemplateResponse(
@@ -284,8 +503,12 @@ async def predict_result(request: Request, db: Session = Depends(get_db)):
                 "prediction": risk_level,
                 "probability": probability_percent,
                 "risk_level": risk_level,
+                "risk_class": risk_class,
+                "risk_explanation": risk_explanation,
+                "recommendation": recommendation,
                 "values": form_values,
                 "error": None,
+                "current_user": current_user,
             },
         )
 
@@ -298,5 +521,6 @@ async def predict_result(request: Request, db: Session = Depends(get_db)):
                 "url_for": request.url_for,
                 "error": str(exc),
                 "values": form_values,
+                "current_user": current_user,
             },
         )

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="container py-5 dashboard-page">
+    <div class="dashboard-hero mb-4">
+        <div>
+            <p class="dashboard-kicker mb-1">Project Analytics</p>
+            <h2 class="mb-2">Flood Risk Analysis Dashboard</h2>
+            <p class="mb-0 text-muted">A summary of model predictions, risk categories, and recent flood probability results.</p>
+        </div>
+        <a href="/predict" class="btn btn-primary">New Prediction</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="dashboard-stat-card">
+                <span class="stat-label">Total Predictions</span>
+                <strong class="stat-value">{{ total_predictions }}</strong>
+                <span class="stat-helper">Saved model runs</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="dashboard-stat-card {% if latest_prediction and latest_prediction.risk_level == 'High Risk' %}stat-card-high{% elif latest_prediction and latest_prediction.risk_level == 'Medium Risk' %}stat-card-medium{% elif latest_prediction and latest_prediction.risk_level == 'Low Risk' %}stat-card-low{% endif %}">
+                <span class="stat-label">Latest Risk Level</span>
+                <strong class="stat-value stat-value-small">
+                    {% if latest_prediction and latest_prediction.risk_level %}
+                    {{ latest_prediction.risk_level }}
+                    {% else %}
+                    Not available
+                    {% endif %}
+                </strong>
+                <span class="stat-helper">Most recent result</span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="dashboard-stat-card">
+                <span class="stat-label">Latest Probability</span>
+                <strong class="stat-value">
+                    {% if latest_prediction and latest_prediction.probability is not none %}
+                    {{ latest_prediction.probability }}%
+                    {% else %}
+                    N/A
+                    {% endif %}
+                </strong>
+                <span class="stat-helper">ANN sigmoid output</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow border-0 rounded-4">
+        <div class="card-header bg-primary text-white d-flex flex-column flex-md-row justify-content-between gap-2">
+            <h3 class="card-title mb-0">Recent Prediction History</h3>
+            <span class="history-subtitle">Latest 20 records</span>
+        </div>
+        <div class="card-body p-0">
+            {% if history_rows %}
+            <div class="table-responsive">
+                <table class="table dashboard-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Flood Probability</th>
+                            <th scope="col">Risk Level</th>
+                            <th scope="col">Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in history_rows %}
+                        <tr>
+                            <td data-label="Flood Probability" class="fw-semibold">{{ row.probability }}%</td>
+                            <td data-label="Risk Level">
+                                <span class="risk-badge {% if row.risk_level == 'High Risk' %}risk-badge-high{% elif row.risk_level == 'Medium Risk' %}risk-badge-medium{% else %}risk-badge-low{% endif %}">
+                                    {{ row.risk_level or "Not available" }}
+                                </span>
+                            </td>
+                            <td data-label="Created At">{{ row.created_at|format_datetime }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="dashboard-empty-state">
+                <h4>No predictions yet</h4>
+                <p class="text-muted mb-3">Run your first flood prediction to start building your history.</p>
+                <a href="/predict" class="btn btn-primary">Create Prediction</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
