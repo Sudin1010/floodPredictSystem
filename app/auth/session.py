@@ -1,20 +1,10 @@
 from typing import Optional
 
-from passlib.context import CryptContext
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.auth.hashing import verify_password
 from app.database.models import User
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, password_hash: str) -> bool:
-    return pwd_context.verify(plain_password, password_hash)
 
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:

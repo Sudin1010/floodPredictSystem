@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth.session import get_current_user
 from app.database.connection import get_db
 from app.ml.predictor import map_risk_level, predict_probability
 from app.ml.preprocessing import (
