@@ -136,13 +136,4 @@ The prediction flow is intentionally preserved:
     - High Risk: `>= 70`
 11. Save raw input values and prediction result to `prediction_history`.
 
-## Screenshots
 
-Add screenshots here:
-
-- Home page
-- Registration page
-- Login page
-- Prediction form
-- Prediction result
-- Dashboard/history page
