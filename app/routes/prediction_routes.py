@@ -51,7 +51,7 @@ async def home(request: Request, db: Session = Depends(get_db)):
 async def predict_form(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if current_user is None:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/login?next=predict", status_code=303)
 
     return templates.TemplateResponse(
         request=request,
@@ -69,7 +69,7 @@ async def predict_form(request: Request, db: Session = Depends(get_db)):
 async def predict_result(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if current_user is None:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/login?next=predict", status_code=303)
 
     form = await request.form()
     form_values = get_submitted_values(form)

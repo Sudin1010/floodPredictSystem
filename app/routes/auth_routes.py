@@ -93,6 +93,9 @@ async def login_form(request: Request, db: Session = Depends(get_db)):
             "url_for": request.url_for,
             "current_user": current_user,
             "error": None,
+            "info": "Please login to access flood prediction."
+            if request.query_params.get("next") == "predict"
+            else None,
             "success": "Registration successful. Please login."
             if request.query_params.get("registered") == "1"
             else None,
@@ -116,6 +119,7 @@ async def login_user(request: Request, db: Session = Depends(get_db)):
                 "url_for": request.url_for,
                 "current_user": None,
                 "error": "Invalid username/email or password.",
+                "info": None,
                 "username_or_email": username_or_email,
             },
         )

@@ -9,7 +9,11 @@
                 A machine learning web application that predicts flood risk using
                 environmental and hydrological factors.
             </p>
+            {% if current_user %}
             <a href="/predict" class="btn btn-primary btn-lg mt-3">Start Prediction</a>
+            {% else %}
+            <a href="/login" class="btn btn-primary btn-lg mt-3">Login to Start Prediction</a>
+            {% endif %}
         </div>
 
         <div class="col-lg-6 mt-4 mt-lg-0">
