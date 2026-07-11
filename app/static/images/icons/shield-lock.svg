@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Secure authentication icon</title>
+  <desc id="desc">A cyan shield and lock icon.</desc>
+  <g fill="none" stroke="#16d5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 6 52 14v16c0 13-8 23-20 28C20 53 12 43 12 30V14l20-8Z"/>
+    <path d="M24 30h16v14H24zM28 30v-5a4 4 0 0 1 8 0v5M32 36v4"/>
+  </g>
+</svg>

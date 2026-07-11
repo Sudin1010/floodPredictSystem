@@ -1,32 +1,142 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="container py-5">
-    <div class="row align-items-center">
-        <div class="col-lg-6">
-            <h1 class="display-5 fw-bold">Flood Prediction System</h1>
-            <p class="lead mt-3">
-                A machine learning web application that predicts flood risk using
-                environmental and hydrological factors.
-            </p>
-            {% if current_user %}
-            <a href="/predict" class="btn btn-primary btn-lg mt-3">Start Prediction</a>
-            {% else %}
-            <a href="/login" class="btn btn-primary btn-lg mt-3">Login to Start Prediction</a>
-            {% endif %}
-        </div>
-
-        <div class="col-lg-6 mt-4 mt-lg-0">
-            <div class="card shadow border-0 rounded-4">
-                <div class="card-body p-4">
-                    <h4>Project Overview</h4>
-                    <p>
-                        This system uses a custom Artificial Neural Network model trained
-                        from scratch and saved as <strong>ann_scratch_model.pkl</strong>.
-                    </p>
+<main class="landing-page-redesign">
+    <section class="landing-hero" id="home">
+        <div class="landing-hero-overlay"></div>
+        <div class="container landing-hero-content">
+            <div class="landing-hero-copy">
+                <h1>Flood Prediction <span>System</span></h1>
+                <p>
+                    Predict flood risk using environmental and hydrological factors through
+                    an Artificial Neural Network trained from scratch.
+                </p>
+                <div class="landing-actions">
+                    {% if current_user %}
+                    <a href="/predict" class="landing-btn landing-btn-primary">Start Prediction <span aria-hidden="true">-&gt;</span></a>
+                    {% else %}
+                    <a href="/login" class="landing-btn landing-btn-primary">Start Prediction <span aria-hidden="true">-&gt;</span></a>
+                    {% endif %}
+                    <a href="#features" class="landing-btn landing-btn-secondary">Learn More</a>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
+
+    <section class="landing-section landing-features" id="features">
+        <div class="container">
+            <div class="landing-section-title">
+                <h2>Why Choose Us</h2>
+            </div>
+            <div class="landing-card-grid">
+                <article class="landing-glass-card">
+                    <div class="landing-card-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/ann.svg') }}" alt="">
+                    </div>
+                    <h3>ANN Prediction</h3>
+                    <p>Custom neural network logic helps estimate flood risk from verified hydrological inputs.</p>
+                </article>
+                <article class="landing-glass-card">
+                    <div class="landing-card-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/lightning.svg') }}" alt="">
+                    </div>
+                    <h3>Real-Time Analysis</h3>
+                    <p>Analyze submitted environmental factors instantly and convert them into clear risk signals.</p>
+                </article>
+                <article class="landing-glass-card">
+                    <div class="landing-card-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/shield-lock.svg') }}" alt="">
+                    </div>
+                    <h3>Secure Authentication</h3>
+                    <p>Protected access keeps prediction workflows and user records available only to signed-in users.</p>
+                </article>
+                <article class="landing-glass-card">
+                    <div class="landing-card-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/history.svg') }}" alt="">
+                    </div>
+                    <h3>Prediction History</h3>
+                    <p>Saved results make it easier to review prior predictions and track flood-risk decisions.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-section landing-workflow" id="how-it-works">
+        <div class="container">
+            <div class="landing-section-title">
+                <h2>How It Works</h2>
+            </div>
+            <div class="workflow-grid">
+                <article class="workflow-item">
+                    <div class="workflow-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/rain-cloud.svg') }}" alt="">
+                    </div>
+                    <span class="workflow-number">01</span>
+                    <h3>Input</h3>
+                </article>
+                <article class="workflow-item">
+                    <div class="workflow-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/database.svg') }}" alt="">
+                    </div>
+                    <span class="workflow-number">02</span>
+                    <h3>Preprocess</h3>
+                </article>
+                <article class="workflow-item">
+                    <div class="workflow-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/ann.svg') }}" alt="">
+                    </div>
+                    <span class="workflow-number">03</span>
+                    <h3>ANN Prediction</h3>
+                </article>
+                <article class="workflow-item">
+                    <div class="workflow-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/risk-chart.svg') }}" alt="">
+                    </div>
+                    <span class="workflow-number">04</span>
+                    <h3>Risk Analysis</h3>
+                </article>
+                <article class="workflow-item">
+                    <div class="workflow-icon" aria-hidden="true">
+                        <img src="{{ url_for('static', path='/images/icons/results.svg') }}" alt="">
+                    </div>
+                    <span class="workflow-number">05</span>
+                    <h3>Results</h3>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-section landing-team" id="team">
+        <div class="container">
+            <div class="landing-section-title">
+                <h2>Our Team</h2>
+            </div>
+            <div class="team-grid">
+                <article class="team-card">
+                    <img class="team-photo" src="{{ url_for('static', path='/images/team/sam.jpeg') }}" alt="Samrajya Jung Thapa">
+                    <h3>Samrajya Jung Thapa</h3>
+                </article>
+                <article class="team-card">
+                    <img class="team-photo" src="{{ url_for('static', path='/images/team/sudin.jpeg') }}" alt="Sudin Ranabhat">
+                    <h3>Sudin Ranabhat</h3>
+                </article>
+                <article class="team-card">
+                    <img class="team-photo" src="{{ url_for('static', path='/images/team/tej.jpeg') }}" alt="Tej Prasad Poudel">
+                    <h3>Tej Prasad Poudel</h3>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <footer class="landing-footer">
+        <div class="container">
+            <div class="landing-footer-links">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">GitHub Project</a>
+            </div>
+            <p>&copy; 2026 Flood Prediction System. All rights reserved.</p>
+        </div>
+    </footer>
+</main>
 {% endblock %}

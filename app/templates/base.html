@@ -10,9 +10,12 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary app-navbar">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="/">Flood Prediction</a>
+        <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+            <img class="brand-logo" src="{{ url_for('static', path='/images/logo.svg') }}" alt="Flood Prediction System logo">
+            <span>Flood Prediction System</span>
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -24,9 +27,10 @@
                 <a class="nav-link text-white" href="/history">Dashboard</a>
                 <a class="nav-link text-white" href="/logout">Logout</a>
                 {% else %}
-                <a class="nav-link text-white" href="/#about">About</a>
-                <a class="nav-link text-white" href="/login">Login</a>
-                <a class="nav-link text-white" href="/register">Register</a>
+                <a class="nav-link text-white" href="/#features">Features</a>
+                <a class="nav-link text-white" href="/#how-it-works">How It Works</a>
+                <a class="nav-link text-white nav-link-outline" href="/login">Sign In</a>
+                <a class="nav-link text-white nav-link-filled" href="/register">Sign Up</a>
                 {% endif %}
             </div>
         </div>

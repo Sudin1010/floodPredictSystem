@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Prediction history icon</title>
+  <desc id="desc">A cyan bar chart icon.</desc>
+  <g fill="none" stroke="#16d5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 52h40"/>
+    <path d="M17 34h8v18h-8zM29 24h8v28h-8zM41 14h8v38h-8z"/>
+    <path d="M15 22c8 1 16-1 23-8l4-4"/>
+  </g>
+</svg>

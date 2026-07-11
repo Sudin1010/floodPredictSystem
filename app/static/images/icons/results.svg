@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Results icon</title>
+  <desc id="desc">A cyan monitor with chart icon.</desc>
+  <g fill="none" stroke="#16d5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 12h40v30H12zM24 54h16M32 42v12"/>
+    <path d="m18 34 9-9 7 6 12-15M45 16h3v3"/>
+  </g>
+</svg>

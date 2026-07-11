@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Risk analysis icon</title>
+  <desc id="desc">A cyan rising chart icon.</desc>
+  <g fill="none" stroke="#16d5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 52h42M18 46V32M30 46V24M42 46V16"/>
+    <path d="m18 25 10 8 17-19h7v7"/>
+  </g>
+</svg>

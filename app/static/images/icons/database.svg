@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Preprocess data icon</title>
+  <desc id="desc">A cyan database icon.</desc>
+  <g fill="none" stroke="#16d5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="32" cy="15" rx="18" ry="7"/>
+    <path d="M14 15v12c0 4 8 7 18 7s18-3 18-7V15"/>
+    <path d="M14 27v12c0 4 8 7 18 7s18-3 18-7V27"/>
+    <path d="M14 39v10c0 4 8 7 18 7s18-3 18-7V39"/>
+  </g>
+</svg>
