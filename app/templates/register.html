@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="container py-5">
+<section class="container py-5 auth-page-surface">
     <div class="row justify-content-center">
         <div class="col-lg-6">
             <div class="card shadow border-0 rounded-4">
@@ -15,19 +15,21 @@
                     </div>
                     {% endif %}
 
-                    <form method="POST" action="/register">
+                    <form method="POST" action="/register" data-auth-form="register" novalidate>
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" value="{{ username or '' }}" required>
+                            <input type="text" class="form-control" id="username" name="username" value="{{ username or '' }}" placeholder="Enter your username" required data-auth-required="Username is required." data-auth-username="Username must be 3–20 characters and contain only letters, numbers, and underscores.">
+                            <div class="auth-validation-message" data-message-for="username"></div>
                         </div>
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" required>
+                            <input type="text" class="form-control" id="email" name="email" value="{{ email or '' }}" placeholder="Enter your email address" inputmode="email" required data-auth-required="Email is required." data-auth-email="Please enter a valid email address.">
+                            <div class="auth-validation-message" data-message-for="email"></div>
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Password</label>
                             <div class="input-group">
-                                <input type="password" class="form-control" id="password" name="password" required>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Create your password" required data-auth-required="Password is required." data-auth-password="Password must contain at least 8 characters, including one letter and one number.">
                                 <button class="btn btn-outline-secondary password-toggle-btn" type="button" data-password-toggle data-target="password" aria-label="Show password">
                                     <span class="password-icon password-icon-eye" aria-hidden="true">
                                         <svg viewBox="0 0 24 24" focusable="false">
@@ -45,11 +47,12 @@
                                     <span class="visually-hidden">Show password</span>
                                 </button>
                             </div>
+                            <div class="auth-validation-message" data-message-for="password"></div>
                         </div>
                         <div class="mb-4">
                             <label for="confirm_password" class="form-label">Confirm Password</label>
                             <div class="input-group">
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required data-auth-required="Confirm password is required.">
                                 <button class="btn btn-outline-secondary password-toggle-btn" type="button" data-password-toggle data-target="confirm_password" aria-label="Show confirm password">
                                     <span class="password-icon password-icon-eye" aria-hidden="true">
                                         <svg viewBox="0 0 24 24" focusable="false">
@@ -67,6 +70,7 @@
                                     <span class="visually-hidden">Show confirm password</span>
                                 </button>
                             </div>
+                            <div class="auth-validation-message" data-message-for="confirm_password"></div>
                         </div>
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary btn-lg">Create Account</button>

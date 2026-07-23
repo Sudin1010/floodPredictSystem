@@ -57,150 +57,168 @@
                     </div>
                     {% endif %}
 
-                    <form id="predictionForm" method="POST" action="/predict">
+                    <form id="predictionForm" method="POST" action="/predict" novalidate>
                         <div class="row">
                             <!-- Monsoon Intensity -->
                             <div class="col-md-6 mb-3">
-                                <label for="MonsoonIntensity" class="form-label">MonsoonIntensity</label>
+                                <label for="MonsoonIntensity" class="form-label">
+                                    Monsoon Intensity <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="MonsoonIntensity" name="MonsoonIntensity"
-                                       min="0" max="16" step="0.1" value="{{ values.get('MonsoonIntensity', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = more intense monsoon)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('MonsoonIntensity', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Topography Drainage -->
                             <div class="col-md-6 mb-3">
-                                <label for="TopographyDrainage" class="form-label">TopographyDrainage</label>
+                                <label for="TopographyDrainage" class="form-label">
+                                    Topography Drainage <span class="text-muted">(0–17)</span>
+                                </label>
                                 <input type="number" class="form-control" id="TopographyDrainage" name="TopographyDrainage"
-                                       min="0" max="17" step="0.1" value="{{ values.get('TopographyDrainage', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-17 (higher = better drainage)</div>
+                                       min="0" max="17" step="0.1" value="{{ values.get('TopographyDrainage', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- River Management -->
                             <div class="col-md-6 mb-3">
-                                <label for="RiverManagement" class="form-label">RiverManagement</label>
+                                <label for="RiverManagement" class="form-label">
+                                    River Management <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="RiverManagement" name="RiverManagement"
-                                       min="0" max="16" step="0.1" value="{{ values.get('RiverManagement', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = better management)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('RiverManagement', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Deforestation -->
                             <div class="col-md-6 mb-3">
-                                <label for="Deforestation" class="form-label">Deforestation</label>
+                                <label for="Deforestation" class="form-label">
+                                    Deforestation <span class="text-muted">(0–15)</span>
+                                </label>
                                 <input type="number" class="form-control" id="Deforestation" name="Deforestation"
-                                       min="0" max="15" step="0.1" value="{{ values.get('Deforestation', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-15 (higher = more deforestation)</div>
+                                       min="0" max="15" step="0.1" value="{{ values.get('Deforestation', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Urbanization -->
                             <div class="col-md-6 mb-3">
-                                <label for="Urbanization" class="form-label">Urbanization</label>
+                                <label for="Urbanization" class="form-label">
+                                    Urbanization <span class="text-muted">(0–17)</span>
+                                </label>
                                 <input type="number" class="form-control" id="Urbanization" name="Urbanization"
-                                       min="0" max="17" step="0.1" value="{{ values.get('Urbanization', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-17 (higher = more urbanization)</div>
+                                       min="0" max="17" step="0.1" value="{{ values.get('Urbanization', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Climate Change -->
                             <div class="col-md-6 mb-3">
-                                <label for="ClimateChange" class="form-label">ClimateChange</label>
+                                <label for="ClimateChange" class="form-label">
+                                    Climate Change <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="ClimateChange" name="ClimateChange"
-                                       min="0" max="16" step="0.1" value="{{ values.get('ClimateChange', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = greater impact)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('ClimateChange', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Dams Quality -->
                             <div class="col-md-6 mb-3">
-                                <label for="DamsQuality" class="form-label">DamsQuality</label>
+                                <label for="DamsQuality" class="form-label">
+                                    Dam Quality <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="DamsQuality" name="DamsQuality"
-                                       min="0" max="16" step="0.1" value="{{ values.get('DamsQuality', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = better quality)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('DamsQuality', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Siltation -->
                             <div class="col-md-6 mb-3">
-                                <label for="Siltation" class="form-label">Siltation</label>
+                                <label for="Siltation" class="form-label">
+                                    Siltation <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="Siltation" name="Siltation"
-                                       min="0" max="16" step="0.1" value="{{ values.get('Siltation', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = more siltation)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('Siltation', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Agricultural Practices -->
                             <div class="col-md-6 mb-3">
-                                <label for="AgriculturalPractices" class="form-label">AgriculturalPractices</label>
+                                <label for="AgriculturalPractices" class="form-label">
+                                    Agricultural Practices <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="AgriculturalPractices" name="AgriculturalPractices"
-                                       min="0" max="16" step="0.1" value="{{ values.get('AgriculturalPractices', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = better practices)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('AgriculturalPractices', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Encroachments -->
                             <div class="col-md-6 mb-3">
-                                <label for="Encroachments" class="form-label">Encroachments</label>
+                                <label for="Encroachments" class="form-label">
+                                    Encroachments <span class="text-muted">(0–17)</span>
+                                </label>
                                 <input type="number" class="form-control" id="Encroachments" name="Encroachments"
-                                       min="0" max="17" step="0.1" value="{{ values.get('Encroachments', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-17 (higher = more encroachments)</div>
+                                       min="0" max="17" step="0.1" value="{{ values.get('Encroachments', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Ineffective Disaster Preparedness -->
                             <div class="col-md-6 mb-3">
-                                <label for="IneffectiveDisasterPreparedness" class="form-label">IneffectiveDisasterPreparedness</label>
+                                <label for="IneffectiveDisasterPreparedness" class="form-label">
+                                    Ineffective Disaster Preparedness <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="IneffectiveDisasterPreparedness" name="IneffectiveDisasterPreparedness"
-                                       min="0" max="16" step="0.1" value="{{ values.get('IneffectiveDisasterPreparedness', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = less effective)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('IneffectiveDisasterPreparedness', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Drainage Systems -->
                             <div class="col-md-6 mb-3">
-                                <label for="DrainageSystems" class="form-label">DrainageSystems</label>
+                                <label for="DrainageSystems" class="form-label">
+                                    Drainage Systems <span class="text-muted">(0–17)</span>
+                                </label>
                                 <input type="number" class="form-control" id="DrainageSystems" name="DrainageSystems"
-                                       min="0" max="17" step="0.1" value="{{ values.get('DrainageSystems', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-17 (higher = better systems)</div>
+                                       min="0" max="17" step="0.1" value="{{ values.get('DrainageSystems', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Landslides -->
                             <div class="col-md-6 mb-3">
-                                <label for="Landslides" class="form-label">Landslides</label>
+                                <label for="Landslides" class="form-label">
+                                    Landslides <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="Landslides" name="Landslides"
-                                       min="0" max="16" step="0.1" value="{{ values.get('Landslides', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = greater risk)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('Landslides', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Watersheds -->
                             <div class="col-md-6 mb-3">
-                                <label for="Watersheds" class="form-label">Watersheds</label>
+                                <label for="Watersheds" class="form-label">
+                                    Watersheds <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="Watersheds" name="Watersheds"
-                                       min="0" max="16" step="0.1" value="{{ values.get('Watersheds', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = better condition)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('Watersheds', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Deteriorating Infrastructure -->
                             <div class="col-md-6 mb-3">
-                                <label for="DeterioratingInfrastructure" class="form-label">DeterioratingInfrastructure</label>
+                                <label for="DeterioratingInfrastructure" class="form-label">
+                                    Deteriorating Infrastructure <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="DeterioratingInfrastructure" name="DeterioratingInfrastructure"
-                                       min="0" max="16" step="0.1" value="{{ values.get('DeterioratingInfrastructure', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = more deteriorated)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('DeterioratingInfrastructure', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Population Score -->
                             <div class="col-md-6 mb-3">
-                                <label for="PopulationScore" class="form-label">PopulationScore</label>
+                                <label for="PopulationScore" class="form-label">
+                                    Population Score <span class="text-muted">(0–18)</span>
+                                </label>
                                 <input type="number" class="form-control" id="PopulationScore" name="PopulationScore"
-                                       min="0" max="18" step="0.1" value="{{ values.get('PopulationScore', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-18 (higher = greater population pressure)</div>
+                                       min="0" max="18" step="0.1" value="{{ values.get('PopulationScore', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Wetland Loss -->
                             <div class="col-md-6 mb-3">
-                                <label for="WetlandLoss" class="form-label">WetlandLoss</label>
+                                <label for="WetlandLoss" class="form-label">
+                                    Wetland Loss <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="WetlandLoss" name="WetlandLoss"
-                                       min="0" max="16" step="0.1" value="{{ values.get('WetlandLoss', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = greater loss)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('WetlandLoss', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
 
                             <!-- Inadequate Planning -->
                             <div class="col-md-6 mb-3">
-                                <label for="InadequatePlanning" class="form-label">InadequatePlanning</label>
+                                <label for="InadequatePlanning" class="form-label">
+                                    Inadequate Planning <span class="text-muted">(0–16)</span>
+                                </label>
                                 <input type="number" class="form-control" id="InadequatePlanning" name="InadequatePlanning"
-                                       min="0" max="16" step="0.1" value="{{ values.get('InadequatePlanning', 5.0) if values is defined else 5.0 }}" required>
-                                <div class="form-text">Scale: 0-16 (higher = more inadequate)</div>
+                                       min="0" max="16" step="0.1" value="{{ values.get('InadequatePlanning', '') if values is defined else '' }}" placeholder="Enter value" required>
                             </div>
                         </div>
 
@@ -226,11 +244,15 @@ if (predictionForm) {
     predictionForm.addEventListener('submit', function(e) {
         const inputs = this.querySelectorAll('input[type="number"]');
         let isValid = true;
+        let firstInvalidField = null;
 
         inputs.forEach(input => {
-            if (!input.value || input.value < 0) {
+            if (!input.checkValidity()) {
                 input.classList.add('is-invalid');
                 isValid = false;
+                if (!firstInvalidField) {
+                    firstInvalidField = input;
+                }
             } else {
                 input.classList.remove('is-invalid');
             }
@@ -238,7 +260,8 @@ if (predictionForm) {
 
         if (!isValid) {
             e.preventDefault();
-            alert('Please fill in all fields with valid positive numbers.');
+            firstInvalidField.focus();
+            firstInvalidField.reportValidity();
         }
     });
 }
@@ -246,7 +269,7 @@ if (predictionForm) {
 // Remove validation styling on input
 document.querySelectorAll('input[type="number"]').forEach(input => {
     input.addEventListener('input', function() {
-        if (this.value >= 0) {
+        if (this.checkValidity()) {
             this.classList.remove('is-invalid');
         }
     });

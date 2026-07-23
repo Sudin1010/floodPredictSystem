@@ -31,13 +31,11 @@ app.include_router(auth_router)
 
 @app.on_event("startup")
 def create_database_tables() -> None:
-    """Create known ORM tables and preserve the existing history user_id migration."""
     Base.metadata.create_all(bind=engine)
     ensure_prediction_history_user_id()
 
 
 def ensure_prediction_history_user_id() -> None:
-    """Keep older prediction_history tables compatible with per-user history."""
     inspector = inspect(engine)
     if not inspector.has_table("prediction_history"):
         return
