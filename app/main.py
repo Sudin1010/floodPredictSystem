@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.routes import auth_router, dashboard_router, prediction_router
+from app.routes import auth_router, cdo_router, dashboard_router, prediction_router
 
 app = FastAPI(title="Flood Prediction System")
 
@@ -27,3 +27,4 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(prediction_router)
 app.include_router(dashboard_router)
 app.include_router(auth_router)
+app.include_router(cdo_router)

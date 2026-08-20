@@ -1,6 +1,7 @@
 from typing import Optional
 
-from fastapi import Request
+from fastapi import HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -34,3 +35,18 @@ def get_current_user(request: Request, db: Session) -> Optional[User]:
     if user_id is None:
         return None
     return get_user_by_id(db, int(user_id))
+
+
+def require_cdo(request: Request, db: Session) -> User | RedirectResponse:
+    """Require a logged-in CDO user for protected CDO pages."""
+    current_user = get_current_user(request, db)
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    if current_user.role != "cdo":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CDO access required.",
+        )
+
+    return current_user

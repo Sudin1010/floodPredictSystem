@@ -4,6 +4,7 @@ from app.auth.session import (
     get_current_user,
     get_user_by_id,
     get_user_by_username_or_email,
+    require_cdo,
 )
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "get_user_by_id",
     "get_user_by_username_or_email",
     "hash_password",
+    "require_cdo",
     "verify_password",
 ]
