@@ -86,6 +86,12 @@ class PredictionHistory(Base):
     PopulationScore: Mapped[float] = mapped_column(Float, nullable=False)
     WetlandLoss: Mapped[float] = mapped_column(Float, nullable=False)
     InadequatePlanning: Mapped[float] = mapped_column(Float, nullable=False)
+    district: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    prediction_source: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default=text("'personal'"),
+    )
     probability: Mapped[float] = mapped_column(Float, nullable=False)
     risk_level: Mapped[str] = mapped_column(String(20), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

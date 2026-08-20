@@ -8,19 +8,9 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.database.connection import get_db
 
-from app.ml import (
-    BASE_FEATURES,
-    apply_log_transformation,
-    build_feature_vector,
-    map_risk_level,
-    predict_class,
-    predict_probability,
-    scale_features,
-    validate_features,
-    validate_raw_inputs,
-)
+from app.ml import BASE_FEATURES
 
-from app.services import save_prediction_history
+from app.services import run_flood_prediction, save_prediction_history
 
 
 router = APIRouter()
@@ -102,58 +92,17 @@ async def predict_result( request: Request, db: Session = Depends(get_db),):
     form_values = get_submitted_values( form )
 
     try:
-        # Collect and validate the 18 original form inputs.
-        raw_values = validate_raw_inputs(form)
-
-        # Apply the same log1p transformation that was
-        # used before training the ANN.
-        prediction_values = apply_log_transformation(raw_values)
-
-        # Confirm that the runtime inputs exactly match
-        # the 18 features stored in the model package.
-        validate_features( prediction_values)
-
-        # Arrange all values in the exact feature order
-        # used during ANN training.
-        feature_vector = build_feature_vector( prediction_values)
-
-        # Standardize values using the training means
-        # and standard deviations saved in the model.
-        scaled_vector = scale_features(feature_vector)
-
-        # Run ANN forward propagation and return a
-        # probability between 0 and 1.
-        probability = predict_probability(scaled_vector)
-
-        # Convert the probability into class 0 or 1 using the threshold stored in the model package.
-        # The current model threshold is approximately 0.40.
-        predicted_class = predict_class(probability)
-
-        # Give the binary class a readable website label.
-        if predicted_class == 1:
-            classification_label = (  "Higher Flood Risk" )
-        else:
-            classification_label = ( "Lower Flood Risk" )
-
-        # Convert probability from decimal form to percentage.
-        # Example: 0.65 becomes 65.00%.
-        probability_percent = round(
-            probability * 100,
-            2,
-        )
-
-        # Convert the probability percentage into
-        # Low, Medium or High risk for presentation.
-        (risk_level, risk_class,risk_explanation,recommendation,) = map_risk_level(probability_percent)
+        prediction_result = run_flood_prediction(form)
 
         # Save the original raw form inputs and result
         # in the prediction history database.
         save_prediction_history(
             db=db,
-            raw_values=raw_values,
-            probability=probability_percent,
-            risk_level=risk_level,
+            raw_values=prediction_result["raw_values"],
+            probability=prediction_result["probability"],
+            risk_level=prediction_result["risk_level"],
             user_id=current_user.id,
+            prediction_source="personal",
         )
 
         # Display the prediction result on predict.html.
@@ -165,18 +114,16 @@ async def predict_result( request: Request, db: Session = Depends(get_db),):
                 "url_for": request.url_for,
 
                 # Main prediction result
-                "prediction": risk_level,
-                "probability": probability_percent,
-                "risk_level": risk_level,
-                "risk_class": risk_class,
-                "risk_explanation": risk_explanation,
-                "recommendation": recommendation,
+                "prediction": prediction_result["risk_level"],
+                "probability": prediction_result["probability"],
+                "risk_level": prediction_result["risk_level"],
+                "risk_class": prediction_result["risk_class"],
+                "risk_explanation": prediction_result["risk_explanation"],
+                "recommendation": prediction_result["recommendation"],
 
                 # Binary classification result
-                "predicted_class": predicted_class,
-                "classification_label": (
-                    classification_label
-                ),
+                "predicted_class": prediction_result["predicted_class"],
+                "classification_label": prediction_result["classification_label"],
 
                 # Keep form and user information
                 "values": form_values,

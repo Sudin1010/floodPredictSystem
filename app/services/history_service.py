@@ -10,6 +10,8 @@ def save_prediction_history(
     probability: float,
     risk_level: str,
     user_id: int | None = None,
+    district: str | None = None,
+    prediction_source: str = "personal",
 ) -> None:
     """Persist one prediction using raw browser values, not transformed model inputs."""
     history = PredictionHistory(
@@ -17,6 +19,8 @@ def save_prediction_history(
         probability=probability,
         risk_level=risk_level,
         user_id=user_id,
+        district=district,
+        prediction_source=prediction_source,
     )
     db.add(history)
     try:

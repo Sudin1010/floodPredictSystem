@@ -6,13 +6,26 @@
         <div class="col-lg-8">
             <div class="card shadow border-0 rounded-4">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="card-title mb-0">Flood Risk Prediction Form</h3>
+                    <h3 class="card-title mb-0">{{ page_heading or "Flood Risk Prediction Form" }}</h3>
                 </div>
                 <div class="card-body p-4">
                     <p class="text-muted mb-4">
-                        Enter the environmental and hydrological factors below to predict flood risk probability.
+                        {{ page_intro or "Enter the environmental and hydrological factors below to predict flood risk probability." }}
                         All fields are required and should be numeric values.
                     </p>
+
+                    {% if district_label is defined %}
+                    <div class="alert alert-info mb-4 shadow-sm" role="status">
+                        <strong>District:</strong> {{ district_label or "Not assigned" }}
+                        <div>Predictions created here apply to your assigned district.</div>
+                    </div>
+                    {% endif %}
+
+                    {% if district_error is defined and district_error %}
+                    <div class="alert alert-danger mb-4 shadow-sm" role="alert">
+                        <strong>Error:</strong> {{ district_error }}
+                    </div>
+                    {% endif %}
 
                     {% if prediction is defined and prediction %}
                     <div class="prediction-result-card result-{{ risk_class }}">
@@ -25,6 +38,12 @@
                         </div>
 
                         <div class="result-grid">
+                            {% if result_district is defined %}
+                            <div class="probability-section">
+                                <div class="probability-label">District</div>
+                                <div class="h4 mb-0">{{ result_district }}</div>
+                            </div>
+                            {% endif %}
                             <div class="probability-section">
                                 <div class="probability-number">{{ probability }}%</div>
                                 <div class="probability-label">Flood Probability</div>
@@ -45,8 +64,10 @@
                         </div>
 
                         <div class="result-actions">
-                            <a href="/predict" class="btn btn-outline-primary">Make Another Prediction</a>
+                            <a href="{{ reset_url or '/predict' }}" class="btn btn-outline-primary">Make Another Prediction</a>
+                            {% if not is_cdo_prediction %}
                             <a href="/history" class="btn btn-primary">View Prediction History</a>
+                            {% endif %}
                         </div>
                     </div>
                     {% endif %}
@@ -57,7 +78,7 @@
                     </div>
                     {% endif %}
 
-                    <form id="predictionForm" method="POST" action="/predict" novalidate>
+                    <form id="predictionForm" method="POST" action="{{ form_action or '/predict' }}" novalidate>
                         <div class="row">
                             <!-- Monsoon Intensity -->
                             <div class="col-md-6 mb-3">
@@ -223,10 +244,10 @@
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                            <a href="/" class="btn btn-outline-secondary me-md-2">Back to Home</a>
-                            <a href="/predict" class="btn btn-outline-secondary me-md-2">Reset</a>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-calculator me-2"></i>Predict Flood Risk
+                            <a href="{{ back_url or '/' }}" class="btn btn-outline-secondary me-md-2">{{ back_label or "Back to Home" }}</a>
+                            <a href="{{ reset_url or '/predict' }}" class="btn btn-outline-secondary me-md-2">Reset</a>
+                            <button type="submit" class="btn btn-primary btn-lg" {% if district_error is defined and district_error %}disabled{% endif %}>
+                                <i class="fas fa-calculator me-2"></i>{{ submit_label or "Predict Flood Risk" }}
                             </button>
                         </div>
                     </form>

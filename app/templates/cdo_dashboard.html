@@ -10,6 +10,7 @@
             <h4 class="mb-3">Welcome, {{ current_user.username }}</h4>
             <p class="mb-2"><strong>Role:</strong> CDO</p>
             <p class="mb-4"><strong>District:</strong> {{ current_user.district or "Not assigned" }}</p>
+            <a href="/cdo/predict" class="btn btn-primary mb-4">Create District Prediction</a>
             <div class="alert alert-success mb-0 shadow-sm" role="alert">
                 CDO access verified successfully.
             </div>
