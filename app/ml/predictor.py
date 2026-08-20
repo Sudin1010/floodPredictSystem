@@ -21,33 +21,22 @@ def relu(z: np.ndarray) -> np.ndarray:
     return np.maximum(0, z)
 
 
-def forward_propagation(
-    X_data: np.ndarray
-) -> np.ndarray:
+def forward_propagation(X_data: np.ndarray) -> np.ndarray:
     """
     Run the saved three-layer ANN forward pass
     without changing the trained weights.
     """
 
     # First hidden layer
-    Z1 = (
-        X_data @ PARAMETERS["W1"]
-        + PARAMETERS["b1"]
-    )
+    Z1 = (X_data @ PARAMETERS["W1"]+ PARAMETERS["b1"])
     A1 = relu(Z1)
 
     # Second hidden layer
-    Z2 = (
-        A1 @ PARAMETERS["W2"]
-        + PARAMETERS["b2"]
-    )
+    Z2 = (A1 @ PARAMETERS["W2"] + PARAMETERS["b2"] )
     A2 = relu(Z2)
 
     # Output layer
-    Z3 = (
-        A2 @ PARAMETERS["W3"]
-        + PARAMETERS["b3"]
-    )
+    Z3 = (A2 @ PARAMETERS["W3"]+ PARAMETERS["b3"])
     A3 = sigmoid(Z3)
 
     return A3
@@ -68,9 +57,7 @@ def predict_probability(
     return float(probability)
 
 
-def predict_class(
-    probability: float
-) -> int:
+def predict_class(probability: float) -> int:
     """
     Convert ANN probability into binary class
     using the threshold selected on validation data.
@@ -79,17 +66,12 @@ def predict_class(
     Class 1 = Higher Flood Risk
     """
 
-    # Important:
-    # This uses 0.47 or whichever threshold is
-    # stored in the latest ANN model package.
-    return int(
-        probability >= PREDICTION_THRESHOLD
-    )
+    # This uses  threshold is stored in the latest ANN model package.
+   
+    return int(probability >= PREDICTION_THRESHOLD )
 
 
-def map_risk_level(
-    probability_percent: float
-) -> tuple[str, str, str, str]:
+def map_risk_level( probability_percent: float) -> tuple[str, str, str, str]:
     """
     Map the ANN probability percentage to the
     existing Low/Medium/High website presentation.
@@ -134,9 +116,4 @@ def map_risk_level(
             "measures are recommended."
         )
 
-    return (
-        risk_level,
-        risk_class,
-        risk_explanation,
-        recommendation,
-    )
+    return (risk_level,risk_class, risk_explanation, recommendation,)

@@ -16,7 +16,7 @@ def validate_model_package(model_package: dict[str, Any]) -> None:
         "feature_stds",
         "parameters",
 
-        # Important:
+      
         # This is the threshold selected using validation data.
         "prediction_threshold",
     }
@@ -62,9 +62,9 @@ FEATURE_STDS = model_data["feature_stds"]
 # Trained ANN weights and biases
 PARAMETERS = model_data["parameters"]
 
-# Important:
+
 # This should now load the validation-selected threshold,
-# such as 0.47, from the new model package.
+#  from the new model package.
 PREDICTION_THRESHOLD = float(
     model_data["prediction_threshold"]
 )

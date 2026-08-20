@@ -102,50 +102,38 @@ async def predict_result( request: Request, db: Session = Depends(get_db),):
     form_values = get_submitted_values( form )
 
     try:
-        # Step 1:
         # Collect and validate the 18 original form inputs.
         raw_values = validate_raw_inputs(form)
 
-        # Step 2:
         # Apply the same log1p transformation that was
         # used before training the ANN.
         prediction_values = apply_log_transformation(raw_values)
 
-        # Step 3:
         # Confirm that the runtime inputs exactly match
         # the 18 features stored in the model package.
         validate_features( prediction_values)
 
-        # Step 4:
         # Arrange all values in the exact feature order
         # used during ANN training.
         feature_vector = build_feature_vector( prediction_values)
 
-        # Step 5:
         # Standardize values using the training means
         # and standard deviations saved in the model.
         scaled_vector = scale_features(feature_vector)
 
-        # Step 6:
         # Run ANN forward propagation and return a
         # probability between 0 and 1.
         probability = predict_probability(scaled_vector)
 
-        # Step 7:
-        # Convert the probability into class 0 or 1
-        # using the threshold stored in the model package.
+        # Convert the probability into class 0 or 1 using the threshold stored in the model package.
         # The current model threshold is approximately 0.40.
         predicted_class = predict_class(probability)
 
         # Give the binary class a readable website label.
         if predicted_class == 1:
-            classification_label = (
-                "Higher Flood Risk"
-            )
+            classification_label = (  "Higher Flood Risk" )
         else:
-            classification_label = (
-                "Lower Flood Risk"
-            )
+            classification_label = ( "Lower Flood Risk" )
 
         # Convert probability from decimal form to percentage.
         # Example: 0.65 becomes 65.00%.
@@ -156,14 +144,7 @@ async def predict_result( request: Request, db: Session = Depends(get_db),):
 
         # Convert the probability percentage into
         # Low, Medium or High risk for presentation.
-        (
-            risk_level,
-            risk_class,
-            risk_explanation,
-            recommendation,
-        ) = map_risk_level(
-            probability_percent
-        )
+        (risk_level, risk_class,risk_explanation,recommendation,) = map_risk_level(probability_percent)
 
         # Save the original raw form inputs and result
         # in the prediction history database.
@@ -218,3 +199,5 @@ async def predict_result( request: Request, db: Session = Depends(get_db),):
                 "current_user": current_user,
             },
         )
+    
+    

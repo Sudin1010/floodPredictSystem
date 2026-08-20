@@ -11,11 +11,13 @@ from app.routes import auth_router, dashboard_router, prediction_router
 
 app = FastAPI(title="Flood Prediction System")
 
+# app directory is the parent of this file
 BASE_DIR = Path(__file__).resolve().parent
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "change-this-development-secret")
 
+# middleware use secret key to signed session cookies. 
 app.add_middleware(
-    SessionMiddleware,
+    SessionMiddleware, 
     secret_key=SESSION_SECRET_KEY,
     same_site="lax",
     https_only=False,
@@ -31,7 +33,7 @@ app.include_router(auth_router)
 
 @app.on_event("startup")
 def create_database_tables() -> None:
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine) #create tables if they don't exist
     ensure_prediction_history_user_id()
 
 
