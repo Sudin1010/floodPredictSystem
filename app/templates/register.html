@@ -27,6 +27,16 @@
                             <div class="auth-validation-message" data-message-for="email"></div>
                         </div>
                         <div class="mb-3">
+                            <label for="district" class="form-label">District</label>
+                            <select class="form-select" id="district" name="district" required data-auth-required="District is required.">
+                                <option value="" disabled {% if not district %}selected{% endif %}>Select your district</option>
+                                {% for district_name in districts %}
+                                <option value="{{ district_name }}" {% if district == district_name %}selected{% endif %}>{{ district_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="auth-validation-message" data-message-for="district"></div>
+                        </div>
+                        <div class="mb-3">
                             <label for="password" class="form-label">Password</label>
                             <div class="input-group">
                                 <input type="password" class="form-control" id="password" name="password" placeholder="Create your password" required data-auth-required="Password is required." data-auth-password="Password must contain at least 8 characters, including one letter and one number.">

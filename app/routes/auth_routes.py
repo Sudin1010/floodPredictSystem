@@ -14,6 +14,86 @@ router = APIRouter()
 BASE_DIR = Path(__file__).resolve().parents[1]
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
+NEPAL_DISTRICTS = (
+    "Achham",
+    "Arghakhanchi",
+    "Baglung",
+    "Baitadi",
+    "Bajhang",
+    "Bajura",
+    "Banke",
+    "Bara",
+    "Bardiya",
+    "Bhaktapur",
+    "Bhojpur",
+    "Chitwan",
+    "Dadeldhura",
+    "Dailekh",
+    "Dang",
+    "Darchula",
+    "Dhading",
+    "Dhankuta",
+    "Dhanusha",
+    "Dolakha",
+    "Dolpa",
+    "Doti",
+    "Eastern Rukum",
+    "Gorkha",
+    "Gulmi",
+    "Humla",
+    "Ilam",
+    "Jajarkot",
+    "Jhapa",
+    "Jumla",
+    "Kailali",
+    "Kalikot",
+    "Kanchanpur",
+    "Kapilvastu",
+    "Kaski",
+    "Kathmandu",
+    "Kavrepalanchok",
+    "Khotang",
+    "Lalitpur",
+    "Lamjung",
+    "Mahottari",
+    "Makwanpur",
+    "Manang",
+    "Morang",
+    "Mugu",
+    "Mustang",
+    "Myagdi",
+    "Nawalpur",
+    "Nawalparasi West",
+    "Nuwakot",
+    "Okhaldhunga",
+    "Palpa",
+    "Panchthar",
+    "Parbat",
+    "Parsa",
+    "Pyuthan",
+    "Ramechhap",
+    "Rasuwa",
+    "Rautahat",
+    "Rolpa",
+    "Rupandehi",
+    "Salyan",
+    "Sankhuwasabha",
+    "Saptari",
+    "Sarlahi",
+    "Sindhuli",
+    "Sindhupalchok",
+    "Siraha",
+    "Solukhumbu",
+    "Sunsari",
+    "Surkhet",
+    "Syangja",
+    "Tanahun",
+    "Taplejung",
+    "Terhathum",
+    "Udayapur",
+    "Western Rukum",
+)
+
 
 @router.get("/register", response_class=HTMLResponse)
 async def register_form(request: Request, db: Session = Depends(get_db)):
@@ -29,6 +109,7 @@ async def register_form(request: Request, db: Session = Depends(get_db)):
             "url_for": request.url_for,
             "current_user": current_user,
             "error": None,
+            "districts": NEPAL_DISTRICTS,
         },
     )
 
@@ -38,12 +119,15 @@ async def register_user(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
     username = form.get("username", "").strip()
     email = form.get("email", "").strip().lower()
+    district = form.get("district", "").strip()
     password = form.get("password", "")
     confirm_password = form.get("confirm_password", "")
 
     error = None
-    if not username or not email or not password or not confirm_password:
+    if not username or not email or not district or not password or not confirm_password:
         error = "All fields are required."
+    elif district not in NEPAL_DISTRICTS:
+        error = "Please select a valid district."
     elif len(password) < 8:
         error = "Password must be at least 8 characters."
     elif password != confirm_password:
@@ -64,12 +148,16 @@ async def register_user(request: Request, db: Session = Depends(get_db)):
                 "error": error,
                 "username": username,
                 "email": email,
+                "district": district,
+                "districts": NEPAL_DISTRICTS,
             },
         )
 
     user = User(
         username=username,
         email=email,
+        district=district,
+        role="user",
         password_hash=hash_password(password),
     )
     db.add(user)
