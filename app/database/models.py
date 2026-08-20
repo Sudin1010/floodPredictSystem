@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.constants import NEPAL_DISTRICTS
 from app.database.connection import Base
 
 
@@ -26,6 +27,40 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    alert_subscription: Mapped[Optional["AlertSubscription"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class AlertSubscription(Base):
+    __tablename__ = "alert_subscriptions"
+    __table_args__ = (
+        CheckConstraint(
+            f"district IN ({', '.join(repr(district) for district in NEPAL_DISTRICTS)})",
+            name="ck_alert_subscriptions_district",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    district: Mapped[str] = mapped_column(String(100), nullable=False)
+    email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="alert_subscription")
 
 
 class PredictionHistory(Base):
