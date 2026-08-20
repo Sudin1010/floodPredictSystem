@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.constants import NEPAL_DISTRICTS
@@ -32,6 +32,7 @@ class User(Base):
         cascade="all, delete-orphan",
         uselist=False,
     )
+    alerts_created: Mapped[list["Alert"]] = relationship(back_populates="creator")
 
 
 class AlertSubscription(Base):
@@ -101,3 +102,45 @@ class PredictionHistory(Base):
     )
 
     user: Mapped[Optional[User]] = relationship(back_populates="predictions")
+    alert: Mapped[Optional["Alert"]] = relationship(
+        back_populates="prediction",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    prediction_id: Mapped[int] = mapped_column(
+        ForeignKey("prediction_history.id"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+    district: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    probability: Mapped[float] = mapped_column(Float, nullable=False)
+    risk_level: Mapped[str] = mapped_column(String(20), nullable=False)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default=text("'draft'"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    prediction: Mapped[PredictionHistory] = relationship(back_populates="alert")
+    creator: Mapped[User] = relationship(back_populates="alerts_created")

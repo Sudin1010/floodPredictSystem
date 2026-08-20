@@ -12,7 +12,7 @@ def save_prediction_history(
     user_id: int | None = None,
     district: str | None = None,
     prediction_source: str = "personal",
-) -> None:
+) -> PredictionHistory:
     """Persist one prediction using raw browser values, not transformed model inputs."""
     history = PredictionHistory(
         **raw_values,
@@ -25,6 +25,8 @@ def save_prediction_history(
     db.add(history)
     try:
         db.commit()
+        db.refresh(history)
+        return history
     except Exception:
         db.rollback()
         raise

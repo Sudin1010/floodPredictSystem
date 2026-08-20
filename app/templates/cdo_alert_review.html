@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="container py-5 dashboard-page">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow border-0 rounded-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title mb-0">CDO Alert Review</h3>
+                </div>
+                <div class="card-body p-4">
+                    {% if error %}
+                    <div class="alert alert-danger mb-4 shadow-sm" role="alert">
+                        <strong>Error:</strong> {{ error }}
+                    </div>
+                    {% endif %}
+                    {% if success %}
+                    <div class="alert alert-success mb-4 shadow-sm" role="alert">
+                        {{ success }}
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="dashboard-stat-card">
+                                <span class="stat-label">District</span>
+                                <strong class="stat-value stat-value-small">{{ prediction.district }}</strong>
+                                <span class="stat-helper">CDO assigned scope</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-stat-card stat-card-high">
+                                <span class="stat-label">Prediction</span>
+                                <strong class="stat-value stat-value-small">{{ prediction.risk_level }}</strong>
+                                <span class="stat-helper">Risk level</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-stat-card">
+                                <span class="stat-label">Flood Probability</span>
+                                <strong class="stat-value">{{ prediction.probability }}%</strong>
+                                <span class="stat-helper">Stored prediction value</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dashboard-stat-card">
+                                <span class="stat-label">Matching Email Subscribers</span>
+                                <strong class="stat-value">{{ matching_subscriber_count }}</strong>
+                                <span class="stat-helper">Active email subscriptions</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mb-4 shadow-sm" role="status">
+                        No notifications have been sent yet.
+                    </div>
+
+                    <form method="POST" action="/cdo/predictions/{{ prediction.id }}/alert">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Alert Title</label>
+                            <input type="text" class="form-control" id="title" name="title" value="{{ alert_title }}" maxlength="200" required {% if error and prediction.risk_level != "High Risk" %}disabled{% endif %}>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="message" class="form-label">Alert Message</label>
+                            <textarea class="form-control" id="message" name="message" rows="8" maxlength="3000" required {% if error and prediction.risk_level != "High Risk" %}disabled{% endif %}>{{ alert_message }}</textarea>
+                        </div>
+
+                        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                            <div>
+                                <span class="text-muted">Status:</span>
+                                <span class="badge text-bg-secondary">{{ status|title }}</span>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="/cdo/predict" class="btn btn-outline-secondary">Back to Prediction</a>
+                                <button type="submit" class="btn btn-primary" {% if error and prediction.risk_level != "High Risk" %}disabled{% endif %}>Save Alert Draft</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

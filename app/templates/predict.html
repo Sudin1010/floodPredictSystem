@@ -65,6 +65,9 @@
 
                         <div class="result-actions">
                             <a href="{{ reset_url or '/predict' }}" class="btn btn-outline-primary">Make Another Prediction</a>
+                            {% if alert_prediction_id %}
+                            <a href="/cdo/predictions/{{ alert_prediction_id }}/alert" class="btn btn-primary">Prepare Alert</a>
+                            {% endif %}
                             {% if not is_cdo_prediction %}
                             <a href="/history" class="btn btn-primary">View Prediction History</a>
                             {% endif %}
