@@ -9,11 +9,60 @@
         <div class="card-body p-4">
             <h4 class="mb-3">Welcome, {{ current_user.username }}</h4>
             <p class="mb-2"><strong>Role:</strong> CDO</p>
-            <p class="mb-4"><strong>District:</strong> {{ current_user.district or "Not assigned" }}</p>
             <a href="/cdo/predict" class="btn btn-primary mb-4">Create District Prediction</a>
             <div class="alert alert-success mb-0 shadow-sm" role="alert">
                 CDO access verified successfully.
             </div>
+        </div>
+    </div>
+
+    <div class="card shadow border-0 rounded-4 mt-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="card-title mb-0">Recent CDO Predictions</h3>
+        </div>
+        <div class="card-body p-0">
+            {% if recent_predictions %}
+            <div class="table-responsive">
+                <table class="table dashboard-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">District</th>
+                            <th scope="col">Probability</th>
+                            <th scope="col">Risk Level</th>
+                            <th scope="col">Created At</th>
+                            <th scope="col">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in recent_predictions %}
+                        <tr>
+                            <td data-label="District">{{ row.district or "Not available" }}</td>
+                            <td data-label="Probability" class="fw-semibold">{{ row.probability }}%</td>
+                            <td data-label="Risk Level">
+                                <span class="risk-badge {% if row.risk_level == 'High Risk' %}risk-badge-high{% elif row.risk_level == 'Medium Risk' %}risk-badge-medium{% else %}risk-badge-low{% endif %}">
+                                    {{ row.risk_level }}
+                                </span>
+                            </td>
+                            <td data-label="Created At">{{ row.created_at }}</td>
+                            <td data-label="Action">
+                                {% if row.risk_level == "High Risk" %}
+                                <a href="/cdo/predictions/{{ row.id }}/alert" class="btn btn-sm btn-primary">Prepare/View Alert</a>
+                                {% else %}
+                                <span class="text-muted">View</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="dashboard-empty-state">
+                <h4>No CDO predictions yet</h4>
+                <p class="text-muted mb-3">Create a district prediction to begin the alert review workflow.</p>
+                <a href="/cdo/predict" class="btn btn-primary">Create District Prediction</a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </section>

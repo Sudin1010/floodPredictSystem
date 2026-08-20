@@ -14,13 +14,6 @@
                         All fields are required and should be numeric values.
                     </p>
 
-                    {% if district_label is defined %}
-                    <div class="alert alert-info mb-4 shadow-sm" role="status">
-                        <strong>District:</strong> {{ district_label or "Not assigned" }}
-                        <div>Predictions created here apply to your assigned district.</div>
-                    </div>
-                    {% endif %}
-
                     {% if district_error is defined and district_error %}
                     <div class="alert alert-danger mb-4 shadow-sm" role="alert">
                         <strong>Error:</strong> {{ district_error }}
@@ -82,6 +75,18 @@
                     {% endif %}
 
                     <form id="predictionForm" method="POST" action="{{ form_action or '/predict' }}" novalidate>
+                        {% if districts is defined %}
+                        <div class="mb-3">
+                            <label for="district" class="form-label">District</label>
+                            <select class="form-select" id="district" name="district" required>
+                                <option value="" disabled {% if not selected_district %}selected{% endif %}>Select your district</option>
+                                {% for district_name in districts %}
+                                <option value="{{ district_name }}" {% if selected_district == district_name %}selected{% endif %}>{{ district_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
                         <div class="row">
                             <!-- Monsoon Intensity -->
                             <div class="col-md-6 mb-3">

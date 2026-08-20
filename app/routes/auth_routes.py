@@ -134,6 +134,8 @@ async def login_user(request: Request, db: Session = Depends(get_db)):
         )
 
     request.session["user_id"] = user.id
+    if user.role == "cdo":
+        return RedirectResponse(url="/cdo/dashboard", status_code=303)
     return RedirectResponse(url="/predict", status_code=303)
 
 

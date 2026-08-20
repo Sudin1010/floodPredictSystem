@@ -25,7 +25,7 @@
                             <div class="dashboard-stat-card">
                                 <span class="stat-label">District</span>
                                 <strong class="stat-value stat-value-small">{{ prediction.district }}</strong>
-                                <span class="stat-helper">CDO assigned scope</span>
+                                <span class="stat-helper">Prediction district</span>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -52,8 +52,40 @@
                     </div>
 
                     <div class="alert alert-info mb-4 shadow-sm" role="status">
+                        {% if status == "draft" %}
                         No notifications have been sent yet.
+                        {% elif status == "sent" %}
+                        This alert has already been sent. Duplicate sending is disabled.
+                        {% else %}
+                        Delivery has already been processed for this alert.
+                        {% endif %}
                     </div>
+
+                    {% if status != "draft" %}
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="dashboard-stat-card">
+                                <span class="stat-label">Successfully Sent</span>
+                                <strong class="stat-value">{{ sent_count }}</strong>
+                                <span class="stat-helper">Individual emails</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="dashboard-stat-card">
+                                <span class="stat-label">Failed</span>
+                                <strong class="stat-value">{{ failed_count }}</strong>
+                                <span class="stat-helper">Delivery attempts</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="dashboard-stat-card">
+                                <span class="stat-label">Sent At</span>
+                                <strong class="stat-value stat-value-small">{{ sent_at|format_datetime }}</strong>
+                                <span class="stat-helper">Processing time</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <form method="POST" action="/cdo/predictions/{{ prediction.id }}/alert">
                         <div class="mb-3">
@@ -73,10 +105,21 @@
                             </div>
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                 <a href="/cdo/predict" class="btn btn-outline-secondary">Back to Prediction</a>
+                                {% if status == "draft" %}
                                 <button type="submit" class="btn btn-primary" {% if error and prediction.risk_level != "High Risk" %}disabled{% endif %}>Save Alert Draft</button>
+                                {% endif %}
                             </div>
                         </div>
                     </form>
+
+                    {% if alert and status == "draft" and prediction.risk_level == "High Risk" %}
+                    <div class="alert alert-warning mt-4 mb-3 shadow-sm" role="alert">
+                        Sending will email all currently active subscribers for {{ alert.district }}. This action cannot be repeated after successful delivery.
+                    </div>
+                    <form method="POST" action="/cdo/alerts/{{ alert.id }}/send">
+                        <button type="submit" class="btn btn-danger">Send Alert</button>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
         </div>

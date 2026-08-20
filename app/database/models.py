@@ -130,6 +130,9 @@ class Alert(Base):
         nullable=False,
         server_default=text("'draft'"),
     )
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    failed_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

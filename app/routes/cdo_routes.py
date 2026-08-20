@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -7,15 +8,29 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth import require_cdo
+from app.constants import NEPAL_DISTRICTS
 from app.database.connection import get_db
 from app.database.models import Alert, AlertSubscription, PredictionHistory, User
 from app.ml import BASE_FEATURES
-from app.services import run_flood_prediction, save_prediction_history
+from app.services import run_flood_prediction, save_prediction_history, send_alert_email
 
 router = APIRouter(prefix="/cdo")
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+def format_datetime(value) -> str:
+    if value is None:
+        return "Not available"
+
+    day = value.strftime("%d").lstrip("0")
+    month_year = value.strftime("%b %Y")
+    time_value = value.strftime("%I:%M %p").lstrip("0")
+    return f"{day} {month_year}, {time_value}"
+
+
+templates.env.filters["format_datetime"] = format_datetime
 
 
 def get_submitted_values(form) -> dict[str, str]:
@@ -25,9 +40,11 @@ def get_submitted_values(form) -> dict[str, str]:
     }
 
 
-def get_assigned_district_error(current_user) -> str | None:
-    if not current_user.district:
-        return "This CDO account requires an assigned district before district prediction can be created."
+def get_cdo_prediction_district_error(district: str) -> str | None:
+    if not district:
+        return "District is required."
+    if district not in NEPAL_DISTRICTS:
+        return "Please select a valid district."
     return None
 
 
@@ -41,7 +58,6 @@ def get_cdo_prediction_or_404(
             PredictionHistory.id == prediction_id,
             PredictionHistory.user_id == current_user.id,
             PredictionHistory.prediction_source == "cdo",
-            PredictionHistory.district == current_user.district,
         )
     )
     if prediction is None:
@@ -72,10 +88,56 @@ def get_matching_email_subscriber_count(db: Session, district: str) -> int:
     ) or 0
 
 
+def get_matching_subscriber_emails(db: Session, district: str) -> list[str]:
+    return db.scalars(
+        select(User.email)
+        .select_from(AlertSubscription)
+        .join(User, User.id == AlertSubscription.user_id)
+        .where(
+            AlertSubscription.district == district,
+            AlertSubscription.is_active.is_(True),
+            AlertSubscription.email_enabled.is_(True),
+            User.role == "user",
+        )
+        .order_by(User.id)
+    ).all()
+
+
 def get_alert_by_prediction(db: Session, prediction_id: int) -> Alert | None:
     return db.scalar(
         select(Alert).where(Alert.prediction_id == prediction_id)
     )
+
+
+def get_authorized_alert_or_404(
+    db: Session,
+    current_user: User,
+    alert_id: int,
+    *,
+    lock_for_update: bool = False,
+) -> Alert:
+    statement = (
+        select(Alert)
+        .join(PredictionHistory, PredictionHistory.id == Alert.prediction_id)
+        .where(
+            Alert.id == alert_id,
+            Alert.created_by == current_user.id,
+            Alert.district == PredictionHistory.district,
+            PredictionHistory.prediction_source == "cdo",
+            PredictionHistory.risk_level == "High Risk",
+            PredictionHistory.user_id == current_user.id,
+        )
+    )
+    if lock_for_update:
+        statement = statement.with_for_update(of=Alert)
+
+    alert = db.scalar(statement)
+    if alert is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Alert draft not found.",
+        )
+    return alert
 
 
 def build_default_alert_title(prediction: PredictionHistory) -> str:
@@ -84,11 +146,8 @@ def build_default_alert_title(prediction: PredictionHistory) -> str:
 
 def build_default_alert_message(prediction: PredictionHistory) -> str:
     return (
-        f"A high flood risk has been identified for {prediction.district} District.\n\n"
-        f"Estimated flood probability: {prediction.probability}%\n"
-        f"Risk level: {prediction.risk_level}\n\n"
-        "Residents are advised to remain alert and follow instructions from the responsible authorities.\n\n"
-        "This is a prototype flood prediction advisory and should support, not replace, official emergency information."
+        "A high flood risk has been identified.\n\n"
+        "Residents are advised to remain alert and follow instructions from the responsible authorities."
     )
 
 
@@ -114,9 +173,50 @@ def build_alert_context(
         "alert_title": title if title is not None else (alert.title if alert else build_default_alert_title(prediction)),
         "alert_message": message if message is not None else (alert.message if alert else build_default_alert_message(prediction)),
         "status": alert.status if alert else "draft",
+        "sent_count": alert.sent_count if alert else 0,
+        "failed_count": alert.failed_count if alert else 0,
+        "sent_at": alert.sent_at if alert else None,
         "error": error,
         "success": success,
     }
+
+
+def get_send_feedback(request: Request, alert: Alert | None) -> tuple[str | None, str | None]:
+    send_status = request.query_params.get("send_status")
+    if send_status == "already_sent":
+        return None, "This alert has already been sent and cannot be sent again."
+    if send_status == "not_draft":
+        return None, "Only draft alerts can be sent."
+    if send_status == "no_subscribers":
+        return None, "No active email subscribers are available for this district."
+    if send_status == "delivery_disabled":
+        return None, "Email delivery is disabled. No real emails were sent and the alert remains a draft."
+    if send_status == "sent" and alert is not None:
+        return f"Alert sent successfully to {alert.sent_count} subscriber(s).", None
+    if send_status == "partial_failed" and alert is not None:
+        return None, f"Alert partially sent. Successful: {alert.sent_count}. Failed: {alert.failed_count}."
+    if send_status == "failed" and alert is not None:
+        return None, f"Alert delivery failed for all {alert.failed_count} subscriber(s)."
+    return None, None
+
+
+def redirect_to_alert_review(prediction_id: int, send_status: str) -> RedirectResponse:
+    return RedirectResponse(
+        url=f"/cdo/predictions/{prediction_id}/alert?send_status={send_status}",
+        status_code=303,
+    )
+
+
+def get_recent_cdo_predictions(db: Session, user_id: int) -> list[PredictionHistory]:
+    return db.scalars(
+        select(PredictionHistory)
+        .where(
+            PredictionHistory.user_id == user_id,
+            PredictionHistory.prediction_source == "cdo",
+        )
+        .order_by(PredictionHistory.created_at.desc(), PredictionHistory.id.desc())
+        .limit(10)
+    ).all()
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -132,6 +232,7 @@ async def cdo_dashboard(request: Request, db: Session = Depends(get_db)):
             "title": "CDO Dashboard",
             "url_for": request.url_for,
             "current_user": current_user,
+            "recent_predictions": get_recent_cdo_predictions(db, current_user.id),
         },
     )
 
@@ -148,14 +249,15 @@ async def cdo_predict_form(request: Request, db: Session = Depends(get_db)):
         context={
             "title": "CDO Flood Risk Prediction",
             "page_heading": "CDO Flood Risk Prediction",
-            "page_intro": "Predictions created here apply to your assigned district.",
+            "page_intro": "Select the district to analyse.",
             "form_action": "/cdo/predict",
             "submit_label": "Analyze Flood Risk",
             "reset_url": "/cdo/predict",
             "back_url": "/cdo/dashboard",
             "back_label": "Back to CDO Dashboard",
-            "district_label": current_user.district,
-            "district_error": get_assigned_district_error(current_user),
+            "districts": NEPAL_DISTRICTS,
+            "selected_district": "",
+            "district_error": None,
             "values": {},
             "error": None,
             "current_user": current_user,
@@ -170,9 +272,10 @@ async def cdo_predict_result(request: Request, db: Session = Depends(get_db)):
     if isinstance(current_user, RedirectResponse):
         return current_user
 
-    district_error = get_assigned_district_error(current_user)
     form = await request.form()
     form_values = get_submitted_values(form)
+    district = form.get("district", "").strip()
+    district_error = get_cdo_prediction_district_error(district)
 
     if district_error:
         return templates.TemplateResponse(
@@ -181,13 +284,14 @@ async def cdo_predict_result(request: Request, db: Session = Depends(get_db)):
             context={
                 "title": "CDO Flood Risk Prediction",
                 "page_heading": "CDO Flood Risk Prediction",
-                "page_intro": "Predictions created here apply to your assigned district.",
+                "page_intro": "Select the district to analyse.",
                 "form_action": "/cdo/predict",
                 "submit_label": "Analyze Flood Risk",
                 "reset_url": "/cdo/predict",
                 "back_url": "/cdo/dashboard",
                 "back_label": "Back to CDO Dashboard",
-                "district_label": current_user.district,
+                "districts": NEPAL_DISTRICTS,
+                "selected_district": district,
                 "district_error": district_error,
                 "values": form_values,
                 "error": None,
@@ -205,7 +309,7 @@ async def cdo_predict_result(request: Request, db: Session = Depends(get_db)):
             probability=prediction_result["probability"],
             risk_level=prediction_result["risk_level"],
             user_id=current_user.id,
-            district=current_user.district,
+            district=district,
             prediction_source="cdo",
         )
 
@@ -215,14 +319,15 @@ async def cdo_predict_result(request: Request, db: Session = Depends(get_db)):
             context={
                 "title": "CDO Flood Risk Prediction",
                 "page_heading": "CDO Flood Risk Prediction",
-                "page_intro": "Predictions created here apply to your assigned district.",
+                "page_intro": "Select the district to analyse.",
                 "form_action": "/cdo/predict",
                 "submit_label": "Analyze Flood Risk",
                 "reset_url": "/cdo/predict",
                 "back_url": "/cdo/dashboard",
                 "back_label": "Back to CDO Dashboard",
-                "district_label": current_user.district,
-                "result_district": current_user.district,
+                "districts": NEPAL_DISTRICTS,
+                "selected_district": district,
+                "result_district": district,
                 "alert_prediction_id": history.id
                 if prediction_result["risk_level"] == "High Risk"
                 else None,
@@ -248,13 +353,14 @@ async def cdo_predict_result(request: Request, db: Session = Depends(get_db)):
             context={
                 "title": "CDO Flood Risk Prediction",
                 "page_heading": "CDO Flood Risk Prediction",
-                "page_intro": "Predictions created here apply to your assigned district.",
+                "page_intro": "Select the district to analyse.",
                 "form_action": "/cdo/predict",
                 "submit_label": "Analyze Flood Risk",
                 "reset_url": "/cdo/predict",
                 "back_url": "/cdo/dashboard",
                 "back_label": "Back to CDO Dashboard",
-                "district_label": current_user.district,
+                "districts": NEPAL_DISTRICTS,
+                "selected_district": district,
                 "error": str(exc),
                 "values": form_values,
                 "current_user": current_user,
@@ -280,6 +386,9 @@ async def cdo_alert_review(
         prediction.district,
     )
     error = get_high_risk_alert_error(prediction)
+    success, send_error = get_send_feedback(request, alert)
+    if error is None:
+        error = send_error
 
     return templates.TemplateResponse(
         request=request,
@@ -291,6 +400,7 @@ async def cdo_alert_review(
             alert,
             matching_subscriber_count,
             error=error,
+            success=success,
         ),
         status_code=400 if error else 200,
     )
@@ -327,6 +437,8 @@ async def save_cdo_alert_draft(
         error = "Alert message is required."
     elif error is None and len(message) > 3000:
         error = "Alert message must be 3000 characters or fewer."
+    elif error is None and alert is not None and alert.status != "draft":
+        error = "Only draft alerts can be edited."
 
     if error:
         return templates.TemplateResponse(
@@ -381,3 +493,72 @@ async def save_cdo_alert_draft(
             success="Alert draft saved successfully. No notifications have been sent yet.",
         ),
     )
+
+
+@router.post("/alerts/{alert_id}/send", response_class=HTMLResponse)
+async def send_cdo_alert(
+    alert_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    current_user = require_cdo(request, db)
+    if isinstance(current_user, RedirectResponse):
+        return current_user
+
+    alert = get_authorized_alert_or_404(
+        db,
+        current_user,
+        alert_id,
+        lock_for_update=True,
+    )
+    prediction = alert.prediction
+
+    if alert.status == "sent":
+        return redirect_to_alert_review(prediction.id, "already_sent")
+
+    if alert.status != "draft":
+        return redirect_to_alert_review(prediction.id, "not_draft")
+
+    recipient_emails = get_matching_subscriber_emails(db, alert.district)
+    if not recipient_emails:
+        return redirect_to_alert_review(prediction.id, "no_subscribers")
+
+    sent_count = 0
+    failed_count = 0
+    delivery_disabled = False
+
+    for recipient_email in recipient_emails:
+        result = send_alert_email(
+            recipient_email=recipient_email,
+            alert_title=alert.title,
+            alert_message=alert.message,
+            district=alert.district,
+            probability=alert.probability,
+            risk_level=alert.risk_level,
+        )
+        if result.disabled:
+            delivery_disabled = True
+            break
+        if result.success:
+            sent_count += 1
+        else:
+            failed_count += 1
+
+    if delivery_disabled:
+        return redirect_to_alert_review(prediction.id, "delivery_disabled")
+
+    alert.sent_count = sent_count
+    alert.failed_count = failed_count
+    alert.sent_at = datetime.now(timezone.utc)
+
+    if sent_count == len(recipient_emails):
+        alert.status = "sent"
+    elif sent_count > 0:
+        alert.status = "partial_failed"
+    else:
+        alert.status = "failed"
+
+    db.commit()
+    db.refresh(alert)
+
+    return redirect_to_alert_review(prediction.id, alert.status)
