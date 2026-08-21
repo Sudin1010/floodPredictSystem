@@ -30,6 +30,16 @@ def format_datetime(value) -> str:
     return f"{day} {month_year}, {time_value}"
 
 
+def format_chart_datetime(value) -> str:
+    if value is None:
+        return "Not available"
+
+    day = value.strftime("%d").lstrip("0")
+    month = value.strftime("%b")
+    time_value = value.strftime("%I:%M %p").lstrip("0")
+    return f"{day} {month}, {time_value}"
+
+
 templates.env.filters["format_datetime"] = format_datetime
 
 
@@ -207,7 +217,7 @@ def redirect_to_alert_review(prediction_id: int, send_status: str) -> RedirectRe
     )
 
 
-def get_recent_cdo_predictions(db: Session, user_id: int) -> list[PredictionHistory]:
+def get_recent_cdo_predictions(db: Session, user_id: int, limit: int = 5) -> list[PredictionHistory]:
     return db.scalars(
         select(PredictionHistory)
         .where(
@@ -215,8 +225,48 @@ def get_recent_cdo_predictions(db: Session, user_id: int) -> list[PredictionHist
             PredictionHistory.prediction_source == "cdo",
         )
         .order_by(PredictionHistory.created_at.desc(), PredictionHistory.id.desc())
-        .limit(10)
+        .limit(limit)
     ).all()
+
+
+def get_latest_cdo_prediction(db: Session, user_id: int) -> PredictionHistory | None:
+    return db.scalar(
+        select(PredictionHistory)
+        .where(
+            PredictionHistory.user_id == user_id,
+            PredictionHistory.prediction_source == "cdo",
+        )
+        .order_by(PredictionHistory.created_at.desc(), PredictionHistory.id.desc())
+        .limit(1)
+    )
+
+
+def get_cdo_trend_predictions(
+    db: Session,
+    user_id: int,
+    district: str,
+    limit: int = 10,
+) -> list[PredictionHistory]:
+    newest_first = db.scalars(
+        select(PredictionHistory)
+        .where(
+            PredictionHistory.user_id == user_id,
+            PredictionHistory.prediction_source == "cdo",
+            PredictionHistory.district == district,
+        )
+        .order_by(PredictionHistory.created_at.desc(), PredictionHistory.id.desc())
+        .limit(limit)
+    ).all()
+    return list(reversed(newest_first))
+
+
+def build_trend_chart_data(predictions: list[PredictionHistory]) -> dict:
+    return {
+        "labels": [format_chart_datetime(row.created_at) for row in predictions],
+        "probabilities": [row.probability for row in predictions],
+        "risk_levels": [row.risk_level for row in predictions],
+        "full_dates": [format_datetime(row.created_at) for row in predictions],
+    }
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -225,6 +275,32 @@ async def cdo_dashboard(request: Request, db: Session = Depends(get_db)):
     if isinstance(current_user, RedirectResponse):
         return current_user
 
+    requested_district = request.query_params.get("district", "").strip()
+    latest_cdo_prediction = get_latest_cdo_prediction(db, current_user.id)
+    recent_predictions = get_recent_cdo_predictions(db, current_user.id, limit=5)
+    has_cdo_predictions = latest_cdo_prediction is not None
+    canonical_districts = list(NEPAL_DISTRICTS)
+    selected_district = ""
+    district_error = None
+
+    if requested_district:
+        if requested_district in canonical_districts:
+            selected_district = requested_district
+        else:
+            district_error = "Please select a valid district."
+    elif latest_cdo_prediction:
+        latest_prediction_district = (latest_cdo_prediction.district or "").strip()
+        if latest_prediction_district in canonical_districts:
+            selected_district = latest_prediction_district
+
+    trend_predictions = []
+    if selected_district:
+        trend_predictions = get_cdo_trend_predictions(
+            db,
+            current_user.id,
+            selected_district,
+        )
+
     return templates.TemplateResponse(
         request=request,
         name="cdo_dashboard.html",
@@ -232,7 +308,14 @@ async def cdo_dashboard(request: Request, db: Session = Depends(get_db)):
             "title": "CDO Dashboard",
             "url_for": request.url_for,
             "current_user": current_user,
-            "recent_predictions": get_recent_cdo_predictions(db, current_user.id),
+            "dashboard_districts": canonical_districts,
+            "district_count": len(canonical_districts),
+            "selected_district": selected_district or "",
+            "district_error": district_error,
+            "has_cdo_predictions": has_cdo_predictions,
+            "trend_predictions": trend_predictions,
+            "trend_chart_data": build_trend_chart_data(trend_predictions),
+            "recent_predictions": recent_predictions,
         },
     )
 

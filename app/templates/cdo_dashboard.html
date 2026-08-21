@@ -18,6 +18,59 @@
 
     <div class="card shadow border-0 rounded-4 mt-4">
         <div class="card-header bg-primary text-white">
+            <h3 class="card-title mb-0">Flood Probability Trend</h3>
+        </div>
+        <div class="card-body p-4">
+            {% if district_error %}
+            <div class="alert alert-danger mb-4 shadow-sm" role="alert">
+                <strong>Error:</strong> {{ district_error }}
+            </div>
+            {% endif %}
+
+            <form method="GET" action="/cdo/dashboard" class="row g-3 align-items-end mb-4">
+                <div class="col-md-8">
+                    <label for="district" class="form-label">District</label>
+                    <select class="form-select" id="district" name="district" onchange="this.form.submit()">
+                        <option value="" disabled {% if not selected_district %}selected{% endif %}>Select district</option>
+                        {% for district_name in dashboard_districts %}
+                        <option value="{{ district_name }}" {% if selected_district == district_name %}selected{% endif %}>{{ district_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Update Trend</button>
+                </div>
+            </form>
+
+            {% if not has_cdo_predictions %}
+            <div class="dashboard-empty-state">
+                <h4>No CDO predictions yet</h4>
+                <p class="text-muted mb-0">Create a district prediction to begin tracking flood probability trends.</p>
+            </div>
+            {% elif not selected_district %}
+            <div class="dashboard-empty-state">
+                <h4>Select a district to view its trend.</h4>
+                <p class="text-muted mb-0">CDO predictions exist, but no valid district is currently selected.</p>
+            </div>
+            {% elif trend_predictions %}
+            <div style="height: 300px;">
+                <canvas id="floodTrendChart"></canvas>
+            </div>
+            <p class="text-muted mt-3 mb-0">
+                Latest {{ trend_predictions|length }} CDO prediction{% if trend_predictions|length != 1 %}s{% endif %} for {{ selected_district }}.
+                {% if trend_predictions|length == 1 %}More predictions are needed to establish a trend.{% endif %}
+            </p>
+            {% else %}
+            <div class="dashboard-empty-state">
+                <h4>No CDO predictions are available for this district yet.</h4>
+                <p class="text-muted mb-0">Select another district or create a new prediction for {{ selected_district }}.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow border-0 rounded-4 mt-4">
+        <div class="card-header bg-primary text-white">
             <h3 class="card-title mb-0">Recent CDO Predictions</h3>
         </div>
         <div class="card-body p-0">
@@ -34,7 +87,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for row in recent_predictions %}
+                        {% for row in recent_predictions[:5] %}
                         <tr>
                             <td data-label="District">{{ row.district or "Not available" }}</td>
                             <td data-label="Probability" class="fw-semibold">{{ row.probability }}%</td>
@@ -43,7 +96,7 @@
                                     {{ row.risk_level }}
                                 </span>
                             </td>
-                            <td data-label="Created At">{{ row.created_at }}</td>
+                            <td data-label="Created At">{{ row.created_at|format_datetime }}</td>
                             <td data-label="Action">
                                 {% if row.risk_level == "High Risk" %}
                                 <a href="/cdo/predictions/{{ row.id }}/alert" class="btn btn-sm btn-primary">Prepare/View Alert</a>
@@ -66,4 +119,73 @@
         </div>
     </div>
 </section>
+
+{% if selected_district and trend_predictions %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const floodTrendData = {{ trend_chart_data|tojson }};
+    const floodTrendCanvas = document.getElementById("floodTrendChart");
+
+    if (floodTrendCanvas) {
+        new Chart(floodTrendCanvas, {
+            type: "line",
+            data: {
+                labels: floodTrendData.labels,
+                datasets: [
+                    {
+                        label: "Flood Probability (%)",
+                        data: floodTrendData.probabilities,
+                        borderColor: "#0d6efd",
+                        backgroundColor: "rgba(13, 110, 253, 0.15)",
+                        pointBackgroundColor: "#0d6efd",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        tension: 0.25,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: "Flood Probability (%)"
+                        },
+                        ticks: {
+                            callback: (value) => `${value}%`
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Prediction Time"
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `Probability: ${context.parsed.y}%`,
+                            afterLabel: (context) => [
+                                `Risk Level: ${floodTrendData.risk_levels[context.dataIndex]}`,
+                                `Date: ${floodTrendData.full_dates[context.dataIndex]}`
+                            ]
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endif %}
 {% endblock %}
