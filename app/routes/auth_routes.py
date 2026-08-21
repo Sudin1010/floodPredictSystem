@@ -20,7 +20,9 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 async def register_form(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if current_user is not None:
-        return RedirectResponse(url="/predict", status_code=303)
+        if current_user.role == "cdo":
+            return RedirectResponse(url="/cdo/dashboard", status_code=303)
+        return RedirectResponse(url="/subscription", status_code=303)
 
     return templates.TemplateResponse(
         request=request,
@@ -92,7 +94,9 @@ async def register_user(request: Request, db: Session = Depends(get_db)):
 async def login_form(request: Request, db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if current_user is not None:
-        return RedirectResponse(url="/predict", status_code=303)
+        if current_user.role == "cdo":
+            return RedirectResponse(url="/cdo/dashboard", status_code=303)
+        return RedirectResponse(url="/subscription", status_code=303)
 
     return templates.TemplateResponse(
         request=request,
@@ -136,7 +140,7 @@ async def login_user(request: Request, db: Session = Depends(get_db)):
     request.session["user_id"] = user.id
     if user.role == "cdo":
         return RedirectResponse(url="/cdo/dashboard", status_code=303)
-    return RedirectResponse(url="/predict", status_code=303)
+    return RedirectResponse(url="/subscription", status_code=303)
 
 
 @router.get("/logout")

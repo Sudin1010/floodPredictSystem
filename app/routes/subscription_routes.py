@@ -44,16 +44,14 @@ def build_subscription_context(
     *,
     error: str | None = None,
     success: str | None = None,
-    selected_district: str | None = None,
+    district_error: str | None = None,
     email_enabled: bool | None = None,
+    show_district_form: bool = False,
 ) -> dict:
-    district_value = selected_district
-    if district_value is None:
-        district_value = subscription.district if subscription else current_user.district
-
     email_value = email_enabled
     if email_value is None:
         email_value = subscription.email_enabled if subscription else True
+    alert_district = subscription.district if subscription else current_user.district
 
     return {
         "title": "Flood Alert Subscription",
@@ -61,10 +59,13 @@ def build_subscription_context(
         "current_user": current_user,
         "districts": NEPAL_DISTRICTS,
         "subscription": subscription,
-        "selected_district": district_value or "",
+        "account_district": current_user.district or "",
+        "alert_district": alert_district or "",
         "email_enabled": email_value,
         "error": error,
         "success": success,
+        "district_error": district_error,
+        "show_district_form": show_district_form,
     }
 
 
@@ -80,6 +81,14 @@ async def subscription_form(request: Request, db: Session = Depends(get_db)):
         success = "Subscription saved successfully."
     elif request.query_params.get("unsubscribed") == "1":
         success = "Subscription deactivated successfully."
+    elif request.query_params.get("district_updated") == "1":
+        success = "Alert district updated successfully."
+    elif request.query_params.get("no_subscription") == "1":
+        success = "Subscribe first before changing your alert district."
+    elif request.query_params.get("predictions_disabled") == "1":
+        success = "Flood predictions are managed by CDO users. Subscribe here to receive district alerts."
+
+    show_district_form = request.query_params.get("change_district") == "1"
 
     return templates.TemplateResponse(
         request=request,
@@ -89,6 +98,7 @@ async def subscription_form(request: Request, db: Session = Depends(get_db)):
             current_user,
             subscription,
             success=success,
+            show_district_form=show_district_form,
         ),
     )
 
@@ -100,9 +110,59 @@ async def save_subscription(request: Request, db: Session = Depends(get_db)):
         return current_user
 
     form = await request.form()
-    district = form.get("district", "").strip()
     email_enabled = form.get("email_enabled") == "on"
     subscription = get_user_subscription(db, current_user.id)
+    account_district = (current_user.district or "").strip()
+
+    if not account_district:
+        error = "Please set your district before subscribing."
+    elif account_district not in NEPAL_DISTRICTS:
+        error = "Your account district is invalid."
+    else:
+        error = None
+
+    if error:
+        return templates.TemplateResponse(
+            request=request,
+            name="subscription.html",
+            context=build_subscription_context(
+                request,
+                current_user,
+                subscription,
+                error=error,
+                email_enabled=email_enabled,
+            ),
+            status_code=400,
+        )
+
+    if subscription is None:
+        subscription = AlertSubscription(
+            user_id=current_user.id,
+            district=account_district,
+            email_enabled=email_enabled,
+            is_active=True,
+        )
+        db.add(subscription)
+    else:
+        subscription.email_enabled = email_enabled
+        subscription.is_active = True
+
+    db.commit()
+    return RedirectResponse(url="/subscription?saved=1", status_code=303)
+
+
+@router.post("/subscription/district", response_class=HTMLResponse)
+async def update_subscription_district(request: Request, db: Session = Depends(get_db)):
+    current_user = require_subscription_user(request, db)
+    if isinstance(current_user, RedirectResponse):
+        return current_user
+
+    form = await request.form()
+    district = form.get("district", "").strip()
+    subscription = get_user_subscription(db, current_user.id)
+
+    if subscription is None:
+        return RedirectResponse(url="/subscription?no_subscription=1", status_code=303)
 
     if not district:
         error = "District is required."
@@ -119,28 +179,16 @@ async def save_subscription(request: Request, db: Session = Depends(get_db)):
                 request,
                 current_user,
                 subscription,
-                error=error,
-                selected_district=district,
-                email_enabled=email_enabled,
+                district_error=error,
+                show_district_form=True,
             ),
             status_code=400,
         )
 
-    if subscription is None:
-        subscription = AlertSubscription(
-            user_id=current_user.id,
-            district=district,
-            email_enabled=email_enabled,
-            is_active=True,
-        )
-        db.add(subscription)
-    else:
-        subscription.district = district
-        subscription.email_enabled = email_enabled
-        subscription.is_active = True
+    subscription.district = district
 
     db.commit()
-    return RedirectResponse(url="/subscription?saved=1", status_code=303)
+    return RedirectResponse(url="/subscription?district_updated=1", status_code=303)
 
 
 @router.post("/subscription/unsubscribe")

@@ -60,6 +60,10 @@ async def predict_form(request: Request,db: Session = Depends(get_db),):
     # Only logged-in users can access the prediction page.
     if current_user is None:
         return RedirectResponse(  url="/login?next=predict", status_code=303, )
+    if current_user.role == "user":
+        return RedirectResponse(url="/subscription?predictions_disabled=1", status_code=303)
+    if current_user.role == "cdo":
+        return RedirectResponse(url="/cdo/predict", status_code=303)
 
     return templates.TemplateResponse(
         request=request,
@@ -83,6 +87,10 @@ async def predict_result( request: Request, db: Session = Depends(get_db),):
     # Prevent unauthenticated users from making predictions.
     if current_user is None:
         return RedirectResponse( url="/login?next=predict",status_code=303,)
+    if current_user.role == "user":
+        return RedirectResponse(url="/subscription?predictions_disabled=1", status_code=303)
+    if current_user.role == "cdo":
+        return RedirectResponse(url="/cdo/predict", status_code=303)
 
     # Read all submitted form data.
     form = await request.form()
