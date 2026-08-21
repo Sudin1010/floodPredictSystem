@@ -106,7 +106,9 @@
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                 <a href="/cdo/predict" class="btn btn-outline-secondary">Back to Prediction</a>
                                 {% if status == "draft" %}
-                                <button type="submit" class="btn btn-primary" {% if error and prediction.risk_level != "High Risk" %}disabled{% endif %}>Save Alert Draft</button>
+                                <button type="submit" class="btn btn-primary" {% if error and prediction.risk_level != "High Risk" %}disabled{% endif %}>
+                                    {% if alert %}Save/Update Draft{% else %}Save Alert Draft{% endif %}
+                                </button>
                                 {% endif %}
                             </div>
                         </div>
