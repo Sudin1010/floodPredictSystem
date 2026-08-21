@@ -79,10 +79,6 @@ pip install -r requirements.txt
 
 3. Create a `.env` file in the project root:
 
-```env
-DATABASE_URL=postgresql+psycopg://username:password@localhost:5432/database_name
-SESSION_SECRET_KEY=change-this-development-secret
-```
 
 4. Confirm the ANN model file exists:
 
